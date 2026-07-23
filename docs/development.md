@@ -2,12 +2,23 @@
 
 ## Supported build
 
-CMake is the supported build system. The old Visual Studio projects are historical references only.
+CMake is the supported build system. The old Visual Studio projects are
+historical references only.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
+```
+
+Visual Studio 2022 and modern MSBuild users can open `RakSAMP.slnx`. The
+solution exposes Debug and Release configurations under Any CPU, then delegates
+configuration and compilation to CMake so the active native toolchain still
+selects the actual target architecture.
+
+```bash
+dotnet build RakSAMP.slnx --configuration Release --no-restore
+dotnet msbuild RakSAMP.slnx -t:Test -p:Configuration=Release
 ```
 
 Target platforms are Windows, Linux, and macOS on x64 and ARM64. Linux amd64 and arm64 are also built as containers.

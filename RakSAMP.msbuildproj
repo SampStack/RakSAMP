@@ -1,0 +1,41 @@
+<Project DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">AnyCPU</Platform>
+    <Configurations>Debug;Release</Configurations>
+    <Platforms>AnyCPU</Platforms>
+    <CMakeBuildDirectory>$(MSBuildProjectDirectory)/build/msbuild/$(Configuration)</CMakeBuildDirectory>
+  </PropertyGroup>
+
+  <Target Name="ValidateConfiguration">
+    <Error
+      Condition="'$(Configuration)' != 'Debug' and '$(Configuration)' != 'Release'"
+      Text="Configuration must be Debug or Release." />
+    <Error
+      Condition="'$(Platform)' != 'AnyCPU' and '$(Platform)' != 'Any CPU'"
+      Text="Platform must be Any CPU." />
+  </Target>
+
+  <Target Name="Restore" />
+
+  <Target Name="Configure" DependsOnTargets="ValidateConfiguration">
+    <Exec
+      Command="cmake -S &quot;$(MSBuildProjectDirectory)&quot; -B &quot;$(CMakeBuildDirectory)&quot; -DCMAKE_BUILD_TYPE=$(Configuration) -DBUILD_TESTING=ON" />
+  </Target>
+
+  <Target Name="Build" DependsOnTargets="Configure">
+    <Exec
+      Command="cmake --build &quot;$(CMakeBuildDirectory)&quot; --config $(Configuration) --parallel" />
+  </Target>
+
+  <Target Name="Test" DependsOnTargets="Build">
+    <Exec
+      Command="ctest --test-dir &quot;$(CMakeBuildDirectory)&quot; -C $(Configuration) --output-on-failure" />
+  </Target>
+
+  <Target Name="Clean" DependsOnTargets="ValidateConfiguration">
+    <RemoveDir Directories="$(CMakeBuildDirectory)" />
+  </Target>
+
+  <Target Name="Rebuild" DependsOnTargets="Clean;Build" />
+</Project>

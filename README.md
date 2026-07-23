@@ -105,7 +105,10 @@ xattr -dr com.apple.quarantine raksamp-client
 | x64 and ARM64 | ✅ | ✅ |
 | Linux amd64/arm64 containers | ✅ | ✅ |
 
-The maintained products are command-line only. Historical Visual Studio GUI projects remain as reference material and are not part of supported builds or packages.
+The maintained products are command-line only. `RakSAMP.slnx` provides a modern
+Visual Studio and MSBuild entry point backed by CMake. Historical Visual Studio
+GUI projects remain as reference material and are not part of supported builds
+or packages.
 
 ## Client commands
 
