@@ -214,7 +214,8 @@ namespace DataStructures
 			//	new_array[ counter ] = listArray[ counter ];
 
 			// Don't call constructors, assignment operators, etc.
-			memcpy(new_array, listArray, list_size*sizeof(list_type));
+			if (list_size > 0)
+				memcpy(new_array, listArray, list_size*sizeof(list_type));
 
 			// set old array to point to the newly allocated and twice as large array
 			delete[] listArray;
@@ -227,7 +228,8 @@ namespace DataStructures
 		//	listArray[ counter ] = listArray[ counter - 1 ];
 
 		// Don't call constructors, assignment operators, etc.
-		memmove(listArray+position+1, listArray+position, (list_size-position)*sizeof(list_type));
+		if (list_size > position)
+			memmove(listArray+position+1, listArray+position, (list_size-position)*sizeof(list_type));
 
 		// Insert the new item at the correct spot
 		listArray[ position ] = input;
@@ -259,7 +261,8 @@ namespace DataStructures
 			//		new_array[ counter ] = listArray[ counter ];
 
 			// Don't call constructors, assignment operators, etc.
-			memcpy(new_array, listArray, list_size*sizeof(list_type));
+			if (list_size > 0)
+				memcpy(new_array, listArray, list_size*sizeof(list_type));
 
 			// set old array to point to the newly allocated and twice as large array
 			delete[] listArray;
@@ -297,7 +300,8 @@ namespace DataStructures
 				//	new_array[ counter ] = listArray[ counter ];
 
 				// Don't call constructors, assignment operators, etc.
-				memcpy(new_array, listArray, list_size*sizeof(list_type));
+				if (list_size > 0)
+					memcpy(new_array, listArray, list_size*sizeof(list_type));
 
 				// set old array to point to the newly allocated array
 				delete[] listArray;
@@ -342,6 +346,7 @@ namespace DataStructures
 			for ( unsigned int counter = position; counter < list_size - 1 ; ++counter )
 			listArray[ counter ] = listArray[ counter + 1 ];
 			*/
+		if (position + 1 < list_size)
 			memmove(listArray+position, listArray+position+1, (list_size-1-position) * sizeof(list_type));
 
 			Del();
@@ -404,7 +409,8 @@ namespace DataStructures
 		//	new_array[ counter ] = listArray[ counter ];
 
 		// Don't call constructors, assignment operators, etc.
-		memcpy(new_array, listArray, list_size*sizeof(list_type));
+		if (list_size > 0)
+			memcpy(new_array, listArray, list_size*sizeof(list_type));
 
 		// set old array to point to the newly allocated array
 		delete[] listArray;

@@ -21,6 +21,10 @@ if(BUILD_TESTING)
     add_executable(protocol-tests tests/protocol_tests.cpp)
     target_include_directories(protocol-tests PRIVATE common)
     add_test(NAME protocol-selection COMMAND protocol-tests)
+
+    add_executable(raknet-container-tests tests/raknet_container_tests.cpp)
+    target_include_directories(raknet-container-tests PRIVATE raknet)
+    add_test(NAME raknet-containers COMMAND raknet-container-tests)
 endif()
 
 set(RAKSAMP_RAKNET_SOURCES
