@@ -139,11 +139,9 @@ void ClientJoin(RPCParameters *rpcParams)
 	pszAuthBullshit[byteAuthBSLen] = 0;
 
 	PlayerID MyPlayerID = pRakServer->GetPlayerIDFromIndex(playerID);
-	in_addr in;
 	if(UNASSIGNED_PLAYER_ID == MyPlayerID)
 	{
-		in.s_addr = sender.binaryAddress;
-		Log("Detected possible bot from (%s)", inet_ntoa(in));
+		Log("Rejected unassigned connection from %s", sender.ToString(false));
 		pRakServer->Kick(MyPlayerID);
 		return;
 	}
@@ -158,7 +156,8 @@ void ClientJoin(RPCParameters *rpcParams)
 		return;
 	}
 
-	if(iVersion != NETGAME_VERSION || _uiRndSrvChallenge != (uiChallengeResponse ^ NETGAME_VERSION))
+	if((iVersion != NETGAME_VERSION_037 && iVersion != NETGAME_VERSION_03DL) ||
+		_uiRndSrvChallenge != (uiChallengeResponse ^ static_cast<unsigned int>(iVersion)))
 	{
 		byteRejectReason = REJECT_REASON_BAD_VERSION;
 		bsReject.Write(byteRejectReason);
@@ -169,6 +168,9 @@ void ClientJoin(RPCParameters *rpcParams)
 	}
 
 	addPlayerToPool(rpcParams->sender, playerID, szNickName);
+	playerPool[playerID].networkVersion = iVersion;
+	playerPool[playerID].protocol =
+		iVersion == NETGAME_VERSION_03DL ? SampProtocol::V03DL : SampProtocol::V037;
 
 	InitGameForPlayer(playerID);
 	SendPlayerPoolToPlayer(playerID);
@@ -211,7 +213,15 @@ void RequestClass(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsReply;
 	bsReply.Write((BYTE)1);
-	bsReply.Write((char *)&psInfo, sizeof(psInfo));
+	bsReply.Write(psInfo.byteTeam);
+	bsReply.Write(psInfo.iSkin);
+	if(playerPool[pRakServer->GetIndexFromPlayerID(rpcParams->sender)].protocol == SampProtocol::V03DL)
+		bsReply.Write((DWORD)0);
+	bsReply.Write(psInfo.unk);
+	bsReply.Write((char *)&psInfo.vecPos, sizeof(psInfo.vecPos));
+	bsReply.Write(psInfo.fRotation);
+	bsReply.Write((char *)&psInfo.iSpawnWeapons, sizeof(psInfo.iSpawnWeapons));
+	bsReply.Write((char *)&psInfo.iSpawnWeaponsAmmo, sizeof(psInfo.iSpawnWeaponsAmmo));
 	pRakServer->RPC(&RPC_RequestClass, &bsReply, HIGH_PRIORITY, RELIABLE,
 		0, rpcParams->sender, FALSE, FALSE, UNASSIGNED_NETWORK_ID, NULL);
 }
@@ -241,18 +251,26 @@ void Spawn(RPCParameters *rpcParams)
 			ScriptEvent_OnPlayerSpawn(script.scriptVM[i], playerId);
 	}
 
-	RakNet::BitStream bsData;
-	bsData.Write(playerId);
-	bsData.Write(byteTeam);
-	bsData.Write(iSkin);
-	bsData.Write(vecPos[0]);
-	bsData.Write(vecPos[1]);
-	bsData.Write(vecPos[2]);
-	bsData.Write(fRotation);
-	bsData.Write(dwColor);
-	bsData.Write(byteFightingStyle);
-	pRakServer->RPC(&RPC_WorldPlayerAdd, &bsData, HIGH_PRIORITY, RELIABLE_ORDERED,
-		0, pRakServer->GetPlayerIDFromIndex(playerId), TRUE, FALSE, UNASSIGNED_NETWORK_ID, NULL);
+	for(PLAYERID recipient = 0; recipient < MAX_PLAYERS; ++recipient)
+	{
+		if(recipient == playerId || !playerPool[recipient].iIsConnected)
+			continue;
+		RakNet::BitStream bsData;
+		bsData.Write(playerId);
+		bsData.Write(byteTeam);
+		bsData.Write(iSkin);
+		if(playerPool[recipient].protocol == SampProtocol::V03DL)
+			bsData.Write((DWORD)0);
+		bsData.Write(vecPos[0]);
+		bsData.Write(vecPos[1]);
+		bsData.Write(vecPos[2]);
+		bsData.Write(fRotation);
+		bsData.Write(dwColor);
+		bsData.Write(byteFightingStyle);
+		pRakServer->RPC(&RPC_WorldPlayerAdd, &bsData, HIGH_PRIORITY, RELIABLE_ORDERED,
+			0, pRakServer->GetPlayerIDFromIndex(recipient), FALSE, FALSE,
+			UNASSIGNED_NETWORK_ID, NULL);
+	}
 }
 
 void Chat(RPCParameters *rpcParams)

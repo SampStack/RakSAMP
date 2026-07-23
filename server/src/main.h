@@ -3,7 +3,11 @@
 */
 
 #include <stdio.h>
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include "../../client/src/native_compat.h"
+#endif
 #include <time.h>
 #include "../../common/common.h"
 
@@ -11,7 +15,7 @@
 
 #include "PacketEnumerations.h"
 #include "RakNetworkFactory.h"
-#include "RakServerInterface.h"
+#include "rakserverinterface.h"
 #include "NetworkTypes.h"
 #include "BitStream.h"
 #include "StringCompressor.h"

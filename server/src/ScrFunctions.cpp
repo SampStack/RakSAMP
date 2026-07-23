@@ -791,7 +791,13 @@ extern char szScripts[512];
 bool LoadScript(char *szScriptName, bool bFirstLoad)
 {
 	char szTemp[256];
-	sprintf_s(szTemp, sizeof(szTemp), "%s\\scripts\\%s.lua", szWorkingDirectory, szScriptName);
+	sprintf_s(szTemp, sizeof(szTemp), "%s%cscripts%c%s.lua", szWorkingDirectory,
+#ifdef _WIN32
+		'\\', '\\',
+#else
+		'/', '/',
+#endif
+		szScriptName);
 
 	for(int i = 0; i < MAX_SCRIPTS; i++)
 	{
@@ -812,7 +818,7 @@ bool LoadScript(char *szScriptName, bool bFirstLoad)
 	}
 
 	strcpy_s(script.szScriptName[iScriptsRunning], 32, szScriptName);
-	script.scriptVM[iScriptsRunning] = lua_open();
+	script.scriptVM[iScriptsRunning] = luaL_newstate();
 	if(script.scriptVM[iScriptsRunning] == NULL)
 	{
 		Log("  %s.lua... FAIL (LUA virtual machine)", szScriptName);

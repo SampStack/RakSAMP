@@ -284,7 +284,8 @@ void BitStream::Write1( void )
 // Returns true if the next data read is a 1, false if it is a 0
 bool BitStream::ReadBit( void )
 {
-	return ( bool ) ( data[ readOffset >> 3 ] & ( 0x80 >> ( readOffset++ & 7 ) ) );
+	const int offset = readOffset++;
+	return ( bool ) ( data[ offset >> 3 ] & ( 0x80 >> ( offset & 7 ) ) );
 }
 
 // Align the bitstream to the byte boundary and then write the specified number of bits.

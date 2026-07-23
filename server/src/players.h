@@ -13,6 +13,8 @@ struct stPlayerPool
 	int iPlayerScore;
 	DWORD dwPlayerPing;
 	VEHICLEID currentVehicleID;
+	SampProtocol protocol;
+	int networkVersion;
 
 	// spawn info
 	BYTE bTeam;

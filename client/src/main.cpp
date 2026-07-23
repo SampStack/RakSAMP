@@ -61,7 +61,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	if(pRakClient == NULL)
 		return 0;
 
-	pRakClient->SetMTUSize(576);
+	pRakClient->SetMTUSize(settings.iMaximumMtu);
 
 	resetPools(1, 0);
 	RegisterRPCs(pRakClient);
@@ -90,6 +90,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	while(1)
 	{
 		UpdateNetwork(pRakClient);
+	#ifndef _WIN32
+		NativePumpCommands();
+	#endif
 
 		if(settings.bSpam)
 			sampSpam();
@@ -144,7 +147,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 				
 				if(strcmp(szInfo, szLastInfo) != 0)
 				{
+				#ifdef _WIN32
 					SetWindowText(texthwnd, szInfo);
+				#endif
 					sprintf_s(szLastInfo, szInfo);
 				}
 			}
@@ -305,14 +310,15 @@ void Log(char *fmt, ...)
 	vsprintf_s(buffer, 512, fmt, args);
 	va_end(args);
 
-	fprintf(flLog, buffer);
+	fprintf(flLog, "%s", buffer);
 
 	if(settings.iConsole)
 	{
-		printf(buffer);
+		printf("%s", buffer);
 	}
 	else
 	{
+	#ifdef _WIN32
 		LPTSTR tbuf = new TCHAR[512];
 		wsprintf(tbuf, buffer);
 
@@ -321,6 +327,7 @@ void Log(char *fmt, ...)
 
 		SendMessage(loghwnd, LB_SETCURSEL, lbCount - 1, 0);
 		SendMessage(loghwnd, LB_SETTOPINDEX, idx, 0);
+	#endif
 	}
 
 	fprintf(flLog, "\n");
@@ -363,4 +370,65 @@ void gen_random(char *s, const int len)
 		s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
 
 	s[len] = 0;
+}
+
+static void PrintClientUsage()
+{
+	printf("Usage: raksamp-client [--config PATH] [--protocol 0.3.7|0.3DL]\n");
+	printf("                      [--check-config] [--help] [--version]\n");
+}
+
+int main(int argc, char **argv)
+{
+	bool checkConfig = false;
+	for(int i = 1; i < argc; ++i)
+	{
+		if(!strcmp(argv[i], "--help"))
+		{
+			PrintClientUsage();
+			return 0;
+		}
+		if(!strcmp(argv[i], "--version"))
+		{
+			printf("raksamp-client %s (SA-MP 0.3.7 + 0.3DL)\n", RAKSAMP_VERSION);
+			return 0;
+		}
+		if(!strcmp(argv[i], "--check-config"))
+		{
+			checkConfig = true;
+			continue;
+		}
+		if((!strcmp(argv[i], "--config") || !strcmp(argv[i], "--protocol")) && i + 1 >= argc)
+		{
+			fprintf(stderr, "%s requires a value\n", argv[i]);
+			return 2;
+		}
+		if(!strcmp(argv[i], "--config"))
+			SetClientConfigPath(argv[++i]);
+		else if(!strcmp(argv[i], "--protocol"))
+		{
+			if(!SetClientProtocolOverride(argv[++i]))
+			{
+				fprintf(stderr, "protocol must be 0.3.7 or 0.3DL\n");
+				return 2;
+			}
+		}
+		else
+		{
+			fprintf(stderr, "unknown option: %s\n", argv[i]);
+			PrintClientUsage();
+			return 2;
+		}
+	}
+
+	if(checkConfig)
+	{
+		if(!LoadSettings())
+			return 1;
+		printf("%s: valid (%s, network %d)\n", GetClientConfigPath(),
+			SampProtocolName(settings.protocol), settings.iNetworkVersion);
+		UnLoadSettings();
+		return 0;
+	}
+	return WinMain(NULL, NULL, NULL, 0);
 }

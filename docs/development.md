@@ -1,0 +1,36 @@
+# Development
+
+## Supported build
+
+CMake is the supported build system. The old Visual Studio projects are historical references only.
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```
+
+Target platforms are Windows, Linux, and macOS on x64 and ARM64. Linux amd64 and arm64 are also built as containers.
+
+## Layout
+
+- `client/src` — headless client and stdin driver
+- `server/src` — development server and Lua bindings
+- `common` — protocol structures and shared definitions
+- `raknet`, `tinyxml` — preserved third-party legacy dependencies
+- `tests` — non-network unit and fixture tests
+
+## Compatibility work
+
+Keep wire structures fixed-width and explicitly packed only where the protocol requires it. Never serialize native pointers, `long`, or compiler-dependent layout. Any protocol-specific outgoing RPC must be serialized for its recipient rather than broadcast using the sender's layout.
+
+Stress-command tests must exercise parsing/state transitions without sending traffic outside an explicitly started loopback fixture.
+
+## Before review
+
+```bash
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+build/bin/raksamp-client --config client/bin/RakSAMPClient.xml --check-config
+build/bin/raksamp-server --config server/bin/RakSAMPServer.xml --check-config
+```

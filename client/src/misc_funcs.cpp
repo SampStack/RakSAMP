@@ -242,7 +242,7 @@ void sampJoinFlood()
 		gen_random(g_szNickName, 16);
 		strcpy(playerInfo[g_myPlayerID].szPlayerName, g_szNickName);
 
-		int iVersion = NETGAME_VERSION;
+		int iVersion = settings.iNetworkVersion;
 		unsigned int uiClientChallengeResponse = settings.uiChallange ^ iVersion;
 		BYTE byteMod = 1;
 
@@ -455,7 +455,7 @@ const struct vehicle_entry *gta_vehicle_get_by_id ( int id )
 
 int gen_gpci(char buf[64], unsigned long factor) /* by bartekdvd */
 {
-	unsigned char out[6*4] = {0};
+	unsigned char out[6*4 + 1] = {0};
 
 	static const char alphanum[] =
 		"0123456789"
@@ -466,7 +466,7 @@ int gen_gpci(char buf[64], unsigned long factor) /* by bartekdvd */
 
 	out[6*4] = 0;
 
-	BIG_NUM_MUL((unsigned long*)out, (unsigned long*)out, factor);
+	BIG_NUM_MUL((unsigned int*)out, (unsigned int*)out, (unsigned int)factor);
 
 	unsigned int notzero = 0;
 	buf[0] = '0'; buf[1] = '\0';
@@ -614,6 +614,7 @@ void processBulletFlood()
 
 void showTeleportMenu()
 {
+#ifdef _WIN32
 	if(bTeleportMenuActive)
 	{
 		bTeleportMenuActive = 0;
@@ -625,6 +626,9 @@ void showTeleportMenu()
 	}
 
 	hTeleportMenuThread = CreateThread(NULL, 0, TeleportMenuThread, NULL, 0, NULL);
+#else
+	Log("Teleport menu is unavailable in the headless test client.");
+#endif
 }
 
 void useTeleport(int iTeleportID)

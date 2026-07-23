@@ -15,7 +15,11 @@ int RunCommand(char *szCMD, int iFromAutorun)
 		return 2;
 
 	if(settings.iConsole)
-		memset(&szCMD[(strlen(szCMD) - 2)], 0, 2);
+	{
+		size_t length = strlen(szCMD);
+		while(length > 0 && (szCMD[length - 1] == '\r' || szCMD[length - 1] == '\n'))
+			szCMD[--length] = '\0';
+	}
 
 	if(settings.runMode == RUNMODE_RCON)
 	{
@@ -536,7 +540,7 @@ int RunCommand(char *szCMD, int iFromAutorun)
 			sprintf_s(g_szNickName, 32, szNewPlayerName);
 			strcpy(playerInfo[g_myPlayerID].szPlayerName, g_szNickName);
 
-			int iVersion = NETGAME_VERSION;
+			int iVersion = settings.iNetworkVersion;
 			unsigned int uiClientChallengeResponse = settings.uiChallange ^ iVersion;
 			BYTE byteMod = 1;
 

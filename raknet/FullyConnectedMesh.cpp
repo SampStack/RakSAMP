@@ -15,7 +15,7 @@
 /// option) any later version.
 
 #include "FullyConnectedMesh.h"
-#include "RakPeerInterface.h"
+#include "rakpeerinterface.h"
 #include "PacketEnumerations.h"
 #include "BitStream.h"
 #include <string.h>

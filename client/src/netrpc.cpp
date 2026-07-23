@@ -24,6 +24,35 @@ HWND hwndSAMPDlg = NULL;
 PLAYER_SPAWN_INFO SpawnInfo;
 
 BOOL bIsSpectating = 0;
+static int RPC_ModelRequest = 179;
+static int RPC_FinishDownload = 184;
+static int RPC_DownloadCompleted = 185;
+
+static void SendFinishedDownloading()
+{
+	if(settings.protocol != SampProtocol::V03DL)
+		return;
+	RakNet::BitStream empty;
+	pRakClient->RPC(&RPC_FinishDownload, &empty, HIGH_PRIORITY, RELIABLE_ORDERED,
+		0, FALSE, UNASSIGNED_NETWORK_ID, NULL);
+}
+
+static void ModelRequest(RPCParameters *rpcParams)
+{
+	RakNet::BitStream data(reinterpret_cast<unsigned char *>(rpcParams->input),
+		(rpcParams->numberOfBitsOfData / 8) + 1, false);
+	DWORD poolId = 0;
+	int count = 0;
+	data.Read(poolId);
+	data.Read(count);
+	if(count <= 0 || poolId + 1 >= static_cast<DWORD>(count))
+		SendFinishedDownloading();
+}
+
+static void DownloadCompleted(RPCParameters *)
+{
+	Log("[0.3DL] Custom model metadata handshake complete (assets not stored).");
+}
 
 void ServerJoin(RPCParameters *rpcParams)
 {
@@ -167,6 +196,7 @@ void InitGame(RPCParameters *rpcParams)
 	}
 
 	iGameInited = 1;
+	SendFinishedDownloading();
 }
 
 void WorldPlayerAdd(RPCParameters *rpcParams)
@@ -189,6 +219,11 @@ void WorldPlayerAdd(RPCParameters *rpcParams)
 	bsData.Read(playerId);
 	bsData.Read(byteTeam);
 	bsData.Read(iSkin);
+	if(settings.protocol == SampProtocol::V03DL)
+	{
+		DWORD customSkin;
+		bsData.Read(customSkin);
+	}
 	bsData.Read(vecPos[0]);
 	bsData.Read(vecPos[1]);
 	bsData.Read(vecPos[2]);
@@ -312,7 +347,7 @@ void ConnectionRejected(RPCParameters *rpcParams)
 	}
 	else if(byteRejectReason==REJECT_REASON_BAD_NICKNAME)
 	{
-		char szNewNick[32], randgen[4];
+		char szNewNick[32], randgen[5];
 
 		iGettingNewName = true;
 
@@ -546,7 +581,18 @@ void RequestClass(RPCParameters *rpcParams)
 
 	if(byteRequestOutcome)
 	{
-		bsData.Read((PCHAR)&SpawnInfo,sizeof(PLAYER_SPAWN_INFO));
+		bsData.Read(SpawnInfo.byteTeam);
+		bsData.Read(SpawnInfo.iSkin);
+		if(settings.protocol == SampProtocol::V03DL)
+		{
+			DWORD customSkin;
+			bsData.Read(customSkin);
+		}
+		bsData.Read(SpawnInfo.unk);
+		bsData.Read((PCHAR)&SpawnInfo.vecPos, sizeof(SpawnInfo.vecPos));
+		bsData.Read(SpawnInfo.fRotation);
+		bsData.Read((PCHAR)&SpawnInfo.iSpawnWeapons, sizeof(SpawnInfo.iSpawnWeapons));
+		bsData.Read((PCHAR)&SpawnInfo.iSpawnWeaponsAmmo, sizeof(SpawnInfo.iSpawnWeaponsAmmo));
 
 		iLocalPlayerSkin = SpawnInfo.iSkin;
 	}
@@ -613,6 +659,7 @@ void ScrInitMenu(RPCParameters *rpcParams)
 	}
 }
 
+#ifdef _WIN32
 LRESULT CALLBACK SAMPDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	HWND hwndEditBox = GetDlgItem(hwnd, IDE_INPUTEDIT);
@@ -815,6 +862,7 @@ DWORD WINAPI DialogBoxThread(PVOID)
 
 	return 0;
 }
+#endif
 
 void ScrDialogBox(RPCParameters *rpcParams)
 {
@@ -840,6 +888,9 @@ void ScrDialogBox(RPCParameters *rpcParams)
 	sampDialog.szButton2[sampDialog.bButton2Len] = 0;
 
 	stringCompressor->DecodeString(sampDialog.szInfo, 256, &bsData);
+	Log("[DIALOG] id=%d style=%d title=%s button1=%s button2=%s info=%s",
+		sampDialog.wDialogID, sampDialog.bDialogStyle, sampDialog.szTitle,
+		sampDialog.szButton1, sampDialog.szButton2, sampDialog.szInfo);
 
 	switch(sampDialog.bDialogStyle)
 	{
@@ -850,7 +901,9 @@ void ScrDialogBox(RPCParameters *rpcParams)
 			if(!sampDialog.iIsActive)
 			{
 				sampDialog.iIsActive = 1;
+			#ifdef _WIN32
 				hDlgThread = CreateThread(NULL, 0, DialogBoxThread, NULL, 0, NULL);
+			#endif
 			}
 		break;
 
@@ -858,11 +911,13 @@ void ScrDialogBox(RPCParameters *rpcParams)
 			if(sampDialog.iIsActive)
 			{
 				sampDialog.iIsActive = 0;
+			#ifdef _WIN32
 				SendMessage(hwndSAMPDlg, WM_DESTROY, 0, 0);
 				DestroyWindow(hwndSAMPDlg);
 				UnregisterClass("dlgWndClass", GetModuleHandle(NULL));
 				hSAMPDlgFont = NULL;
 				TerminateThread(hDlgThread, 0);
+			#endif
 			}
 		break;
 	}
@@ -970,7 +1025,18 @@ void ScrSetSpawnInfo(RPCParameters *rpcParams)
 
 	PLAYER_SPAWN_INFO SpawnInfo;
 
-	bsData.Read((PCHAR)&SpawnInfo, sizeof(PLAYER_SPAWN_INFO));
+	bsData.Read(SpawnInfo.byteTeam);
+	bsData.Read(SpawnInfo.iSkin);
+	if(settings.protocol == SampProtocol::V03DL)
+	{
+		DWORD customSkin;
+		bsData.Read(customSkin);
+	}
+	bsData.Read(SpawnInfo.unk);
+	bsData.Read((PCHAR)&SpawnInfo.vecPos, sizeof(SpawnInfo.vecPos));
+	bsData.Read(SpawnInfo.fRotation);
+	bsData.Read((PCHAR)&SpawnInfo.iSpawnWeapons, sizeof(SpawnInfo.iSpawnWeapons));
+	bsData.Read((PCHAR)&SpawnInfo.iSpawnWeaponsAmmo, sizeof(SpawnInfo.iSpawnWeaponsAmmo));
 
 	if(settings.iNormalModePosForce == 0)
 	{
@@ -1010,8 +1076,20 @@ void ScrSetPlayerSkin(RPCParameters *rpcParams)
 	int iPlayerID;
 	unsigned int uiSkin;
 
-	bsData.Read(iPlayerID);
+	if(settings.protocol == SampProtocol::V03DL)
+	{
+		PLAYERID playerID;
+		bsData.Read(playerID);
+		iPlayerID = playerID;
+	}
+	else
+		bsData.Read(iPlayerID);
 	bsData.Read(uiSkin);
+	if(settings.protocol == SampProtocol::V03DL)
+	{
+		DWORD customSkin;
+		bsData.Read(customSkin);
+	}
 
 	if(iPlayerID < 0 || iPlayerID >= MAX_PLAYERS)
 		return;
@@ -1070,15 +1148,15 @@ void ScrCreate3DTextLabel(RPCParameters *rpcParams)
 	WORD PlayerID;
 	WORD VehicleID;
 
-	bsData.Read((WORD)ID);
-	bsData.Read((DWORD)dwColor);
-	bsData.Read((FLOAT)vecPos[0]);
-	bsData.Read((FLOAT)vecPos[1]);
-	bsData.Read((FLOAT)vecPos[2]);
-	bsData.Read((FLOAT)DrawDistance);
-	bsData.Read((BYTE)UseLOS);
-	bsData.Read((WORD)PlayerID);
-	bsData.Read((WORD)VehicleID);
+	bsData.Read(ID);
+	bsData.Read(dwColor);
+	bsData.Read(vecPos[0]);
+	bsData.Read(vecPos[1]);
+	bsData.Read(vecPos[2]);
+	bsData.Read(DrawDistance);
+	bsData.Read(UseLOS);
+	bsData.Read(PlayerID);
+	bsData.Read(VehicleID);
 
 	stringCompressor->DecodeString(Text, 256, &bsData);
 
@@ -1192,6 +1270,11 @@ void RegisterRPCs(RakClientInterface *pRakClient)
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_Pickup, Pickup);
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_DestroyPickup, DestroyPickup);
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_RequestClass, RequestClass);
+		if(settings.protocol == SampProtocol::V03DL)
+		{
+			pRakClient->RegisterAsRemoteProcedureCall(&RPC_ModelRequest, ModelRequest);
+			pRakClient->RegisterAsRemoteProcedureCall(&RPC_DownloadCompleted, DownloadCompleted);
+		}
 
 		// Scripting RPCs
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrInitMenu, ScrInitMenu);
@@ -1238,6 +1321,11 @@ void UnRegisterRPCs(RakClientInterface * pRakClient)
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_Pickup);
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_DestroyPickup);
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_RequestClass);
+		if(settings.protocol == SampProtocol::V03DL)
+		{
+			pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ModelRequest);
+			pRakClient->UnregisterAsRemoteProcedureCall(&RPC_DownloadCompleted);
+		}
 
 		// Scripting RPCs
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrInitMenu);

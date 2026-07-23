@@ -6,11 +6,37 @@
 
 struct stSettings settings;
 TiXmlDocument xmlSettings;
+static char clientConfigPath[512] = "RakSAMPClient.xml";
+static bool hasProtocolOverride = false;
+static SampProtocol protocolOverride = SampProtocol::V03DL;
+
+void SetClientConfigPath(const char *path)
+{
+	if(path == NULL || path[0] == '\0')
+		return;
+	strncpy(clientConfigPath, path, sizeof(clientConfigPath) - 1);
+	clientConfigPath[sizeof(clientConfigPath) - 1] = '\0';
+}
+
+const char *GetClientConfigPath()
+{
+	return clientConfigPath;
+}
+
+bool SetClientProtocolOverride(const char *value)
+{
+	SampProtocol parsed;
+	if(!TryParseSampProtocol(value, parsed))
+		return false;
+	protocolOverride = parsed;
+	hasProtocolOverride = true;
+	return true;
+}
 
 int LoadSettings()
 {
 	// load xml
-	if(!xmlSettings.LoadFile("RakSAMPClient.xml"))
+	if(!xmlSettings.LoadFile(clientConfigPath))
 	{
 		MessageBox(NULL, "Failed to load the config file", "Error", MB_ICONERROR);
 		ExitProcess(0);
@@ -49,8 +75,31 @@ int LoadSettings()
 		// get max simulated fps
 		rakSAMPElement->QueryIntAttribute("maxfps", (int *)&settings.iMaxFPS);
 
-		// get client version
-		strcpy(settings.szClientVersion, (char *)rakSAMPElement->Attribute("clientversion"));
+		// Protocol is explicit in modern configs. Existing 0.3.7 configs remain
+		// compatible by inferring from their advertised client version.
+		const char *configuredClientVersion = rakSAMPElement->Attribute("clientversion");
+		const char *configuredProtocol = rakSAMPElement->Attribute("protocol");
+		SampProtocol selectedProtocol = SampProtocol::V03DL;
+		if(configuredProtocol != NULL && !TryParseSampProtocol(configuredProtocol, selectedProtocol))
+		{
+			MessageBox(NULL, "protocol must be 0.3.7 or 0.3DL", "Invalid configuration", MB_ICONERROR);
+			xmlSettings.Clear();
+			return 0;
+		}
+		if(configuredProtocol == NULL && configuredClientVersion != NULL &&
+			!strncmp(configuredClientVersion, "0.3.7", 5))
+			selectedProtocol = SampProtocol::V037;
+		if(hasProtocolOverride)
+			selectedProtocol = protocolOverride;
+
+		settings.protocol = selectedProtocol;
+		settings.iNetworkVersion = SampNetworkVersion(selectedProtocol);
+		settings.iMaximumMtu = SampMaximumMtu(selectedProtocol);
+		const char *advertisedVersion = configuredClientVersion != NULL
+			? configuredClientVersion
+			: SampClientVersion(selectedProtocol);
+		strncpy(settings.szClientVersion, advertisedVersion, sizeof(settings.szClientVersion) - 1);
+		settings.szClientVersion[sizeof(settings.szClientVersion) - 1] = '\0';
 
 		// get chat color
 		rakSAMPElement->QueryColorAttribute("chatcolor_rgb",

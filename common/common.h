@@ -7,11 +7,13 @@
 ///////////////////////////////////////////
 
 #include "SAMP_VER.h"
+#include "protocol.h"
 
-#define RAKSAMP_VERSION "v0.8.6-0.3.7"
+#define RAKSAMP_VERSION "0.9.0-dev"
 
 #define NETCODE_CONNCOOKIELULZ 0x6969
-#define NETGAME_VERSION 4057
+#define NETGAME_VERSION_037 4057
+#define NETGAME_VERSION_03DL 4062
 
 #define AUTHOR "jlfm, bartekdvd, P3ti"
 
@@ -28,6 +30,7 @@
 typedef unsigned short PLAYERID;
 typedef unsigned short VEHICLEID;
 
+#ifdef _WIN32
 typedef signed char		int8_t;
 typedef unsigned char		uint8_t;
 typedef signed short		int16_t;
@@ -39,6 +42,9 @@ typedef unsigned long long	uint64_t;
 #define snprintf	_snprintf
 #define vsnprintf	_vsnprintf
 #define isfinite	_finite
+#else
+#include <stdint.h>
+#endif
 
 #define EVENT_TYPE_PAINTJOB				1
 #define EVENT_TYPE_CARCOMPONENT			2
@@ -258,6 +264,8 @@ typedef struct _NEW_VEHICLE {
 	DWORD	  cColor2;
 	BYTE	  byteUnk;
 } NEW_VEHICLE;
+
+#pragma pack()
 
 struct stPlayerInfo
 {

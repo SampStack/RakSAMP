@@ -88,7 +88,8 @@
 
 # define HOST_ENDIAN_IS_BIG
 
-#elif defined(__i386__) || defined(i386) || defined(intel) || defined(_M_IX86) || \
+#elif defined(__aarch64__) || defined(__arm64__) || \
+	defined(__i386__) || defined(i386) || defined(intel) || defined(_M_IX86) || \
 	defined(__amd64) || defined(__amd64__)	|| \
 	defined(__alpha__) || defined(__alpha) || defined(__ia64) || defined(__ia64__) || \
 	defined(_M_ALPHA) || defined(ns32000) || defined(__ns32000__) || defined(sequent) || \
@@ -124,7 +125,8 @@ namespace cat
 
 # define BIG_ENDIAN
 
-#elif defined(__i386__) || defined(i386) || defined(intel) || defined(_M_IX86) || \
+#elif defined(__aarch64__) || defined(__arm64__) || \
+	defined(__i386__) || defined(i386) || defined(intel) || defined(_M_IX86) || \
 	defined(__amd64) || defined(__amd64__)	|| \
 	defined(__alpha__) || defined(__alpha) || defined(__ia64) || defined(__ia64__) || \
 	defined(_M_ALPHA) || defined(ns32000) || defined(__ns32000__) || defined(sequent) || \
@@ -591,8 +593,8 @@ Add memory that is allocated on a 32-bit boundary
 and has at least one block.
 */
 #define MEMADD32(ptr, len, val) { \
-	register u32 *__data = (u32*)(ptr); /* pointer to data to clear */ \
-	register s32 __length = (len); /* number of 32-bit blocks */ \
+	u32 *__data = (u32*)(ptr); /* pointer to data to clear */ \
+	s32 __length = (len); /* number of 32-bit blocks */ \
 	\
 	switch (__length % 8) \
 { \

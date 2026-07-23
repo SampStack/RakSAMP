@@ -4,14 +4,20 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef _WIN32
 #include <conio.h> // need sum co�os and vaginas
 #include <windows.h>
+#else
+#include "native_compat.h"
+#endif
 #include <time.h>
 #include <iostream>
 #include "../../common/common.h"
 
 // window stuff
+#ifdef _WIN32
 #include <commctrl.h>
+#endif
 #include "resource.h"
 
 // raknet stuff
@@ -77,3 +83,6 @@ void Log ( char *fmt, ... );
 void SaveTextDrawData ( WORD wTextID, TEXT_DRAW_TRANSMIT *pData, CHAR* cText );
 void gen_random(char *s, const int len);
 extern RakClientInterface *pRakClient;
+#ifndef _WIN32
+void NativePumpCommands();
+#endif

@@ -1,0 +1,9 @@
+.git
+.github
+build
+out
+*.log
+client/src/Debug
+client/src/Release
+server/src/Debug
+server/src/Release

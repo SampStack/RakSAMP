@@ -68,6 +68,9 @@ struct stSettings
 	int iMaxFPS;
 
 	char szClientVersion[20];
+	SampProtocol protocol;
+	int iNetworkVersion;
+	int iMaximumMtu;
 
 	bool bSpam;
 	bool bFakeKill;
@@ -143,3 +146,6 @@ extern struct stSettings settings;
 int LoadSettings();
 int UnLoadSettings();
 int ReloadSettings();
+void SetClientConfigPath(const char *path);
+bool SetClientProtocolOverride(const char *value);
+const char *GetClientConfigPath();

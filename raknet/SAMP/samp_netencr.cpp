@@ -165,7 +165,7 @@ void kyretardizeDatagram(unsigned char *buf, int len, int port, int unk)
     {
 		buf_nocrc[i] = sampEncrTable[buf_nocrc[i]];
 		if ( unk )
-			buf_nocrc[i] ^= (unsigned __int8)(port ^ 0xCC);
+			buf_nocrc[i] ^= (unsigned char)(port ^ 0xCC);
 		unk ^= 1u;
     }
 }

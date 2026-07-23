@@ -69,5 +69,5 @@ void generateAndLoadInternalScript(lua_State *L)
 		lua_pop(L, 1);
 	}
 
-	free(szScript);
+	delete[] szScript;
 }

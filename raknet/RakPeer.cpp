@@ -15,7 +15,7 @@
 /// option) any later version.
 
 #include "RakNetDefines.h"
-#include "RakPeer.h"
+#include "rakpeer.h"
 #include "NetworkTypes.h"
 
 #include "main.h"
@@ -1027,7 +1027,7 @@ void RakPeer::DeallocatePacket( Packet *packet )
 		return;
 
 	if (packet->deleteData)
-		delete packet->data;
+		delete[] packet->data;
 	free(packet);
 }
 
@@ -3991,7 +3991,10 @@ void ProcessNetworkPacket( const unsigned int binaryAddress, const unsigned shor
 		unsigned char c[3];
 
 		c[0] = ID_OPEN_CONNECTION_REQUEST;
-		*(WORD*)&c[1] = (*(WORD*)&data[1] ^ NETCODE_CONNCOOKIELULZ);
+		WORD cookie;
+		memcpy(&cookie, &data[1], sizeof(cookie));
+		cookie ^= NETCODE_CONNCOOKIELULZ;
+		memcpy(&c[1], &cookie, sizeof(cookie));
 
 		unsigned i;
 		for (i=0; i < rakPeer->messageHandlerList.Size(); i++)

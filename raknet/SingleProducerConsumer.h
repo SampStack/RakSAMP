@@ -100,8 +100,10 @@ namespace DataStructures
 	{
 		// Preallocate
 		readPointer = new DataPlusPtr;
+		readPointer->readyToRead = false;
 		writePointer=readPointer;
 		readPointer->next = new DataPlusPtr;
+		readPointer->next->readyToRead = false;
 		int listSize;
 #ifdef _DEBUG
 		assert(MINIMUM_LIST_SIZE>=3);
@@ -110,6 +112,7 @@ namespace DataStructures
 		{
 			readPointer=readPointer->next;
 			readPointer->next = new DataPlusPtr;
+			readPointer->next->readyToRead = false;
 		}
 		readPointer->next->next=writePointer; // last to next = start
 		readPointer=writePointer;
@@ -126,10 +129,10 @@ namespace DataStructures
 		while (readPointer!=writeAheadPointer)
 		{
 			next=readPointer->next;
-			delete (char*) readPointer;
+			delete const_cast<DataPlusPtr*>(readPointer);
 			readPointer=next;
 		}
-		delete (char*) readPointer;
+		delete const_cast<DataPlusPtr*>(readPointer);
 	}
 
 	template <class SingleProducerConsumerType>
@@ -140,6 +143,7 @@ namespace DataStructures
 		{
 			volatile DataPlusPtr *originalNext=writeAheadPointer->next;
 			writeAheadPointer->next=new DataPlusPtr;
+			writeAheadPointer->next->readyToRead = false;
 			assert(writeAheadPointer->next);
 			writeAheadPointer->next->next=originalNext;
 		}

@@ -1016,7 +1016,8 @@ namespace RakNet
 		if ( readOffset + 1 > numberOfBitsUsed )
 			return false;
 
-		if ( data[ readOffset >> 3 ] & ( 0x80 >> ( readOffset++ % 8 ) ) )   // Is it faster to just write it out here?
+		const int offset = readOffset++;
+		if ( data[ offset >> 3 ] & ( 0x80 >> ( offset % 8 ) ) )   // Is it faster to just write it out here?
 			var = true;
 		else
 			var = false;
@@ -1294,7 +1295,7 @@ namespace RakNet
 			y=0.0;
 		else
 		{
-			ReadCompressed((float)cy);
+			ReadCompressed(cy);
 			y=cy;
 			//Read(sy);
 			//y=((float)sy / 32767.5f - 1.0f);
@@ -1311,7 +1312,7 @@ namespace RakNet
 			//		return false;
 
 			//	z=((float)sz / 32767.5f - 1.0f);
-			if (!ReadCompressed((float)cz))
+			if (!ReadCompressed(cz))
 				return false;
 			z=cz;
 		}

@@ -20,6 +20,8 @@ void addPlayerToPool(PlayerID rakPlayerID, PLAYERID playerID, char *szNick)
 	playerPool[playerID].usClientPort = rakPlayerID.port;
 	playerPool[playerID].iPlayerScore = 0;
 	playerPool[playerID].dwPlayerPing = 0;
+	playerPool[playerID].protocol = SampProtocol::V037;
+	playerPool[playerID].networkVersion = NETGAME_VERSION_037;
 	playerPool[playerID].bTeam = 0xFF;
 	playerPool[playerID].bCheckpointActive = false;
 	playerPool[playerID].bPlayerInCheckpoint = false;

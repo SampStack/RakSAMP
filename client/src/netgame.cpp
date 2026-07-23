@@ -69,7 +69,7 @@ void Packet_ConnectionSucceeded(Packet *p, RakClientInterface *pRakClient)
 
 	Log("Connected. Joining the game...");
 
-	int iVersion = NETGAME_VERSION;
+	int iVersion = settings.iNetworkVersion;
 	unsigned int uiClientChallengeResponse = uiChallenge ^ iVersion;
 	BYTE byteMod = 1;
 
