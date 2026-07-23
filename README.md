@@ -5,7 +5,7 @@
 [![SA-MP 0.3DL](https://img.shields.io/badge/SA--MP-0.3DL-2ea44f)](docs/protocols.md)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](docs/development.md)
 [![Architectures](https://img.shields.io/badge/arch-x64%20%7C%20ARM64-blue)](docs/development.md)
-[![Containers](https://img.shields.io/badge/GHCR-private-informational?logo=github)](docs/releasing.md)
+[![Containers](https://img.shields.io/badge/GHCR-public-informational?logo=github)](docs/releasing.md)
 [![Publish](https://img.shields.io/badge/workflow-manual%20only-orange?logo=githubactions)](.github/workflows/publish-containers.yml)
 
 RakSAMP provides two command-line tools for SA-MP development:
@@ -44,7 +44,7 @@ Set the server, nickname, and password in `RakSAMPClient.xml`. Override the conf
 ./build/bin/raksamp-client --config RakSAMPClient.xml --protocol 0.3.7
 ```
 
-Private container:
+Public container:
 
 ```bash
 docker run --rm -it \
@@ -62,7 +62,7 @@ cp -R server/bin/. work/
 ./build/bin/raksamp-server --config work/RakSAMPServer.xml
 ```
 
-Private container:
+Public container:
 
 ```bash
 docker run --rm -it -p 7777:7777/udp \

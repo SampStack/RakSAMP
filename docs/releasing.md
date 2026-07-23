@@ -15,7 +15,7 @@ The workflow publishes:
 
 Each tag is a `linux/amd64` and `linux/arm64` manifest. The workflow does not create Git tags, GitHub Releases, or `latest`.
 
-Configure `ghcr-publish` as a GitHub Environment with required reviewers. Package visibility is managed in the repository organization's package settings; keep both packages private.
+Configure `ghcr-publish` as a GitHub Environment with required reviewers. Both packages are public so developers and CI systems can pull them without authenticating; publishing still requires the workflow's scoped GitHub token and environment approval.
 
 Before applying a durable tag, pull and run both images on Linux x64 and Apple Silicon:
 
