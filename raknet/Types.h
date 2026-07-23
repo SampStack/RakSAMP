@@ -315,8 +315,10 @@ namespace cat
 	typedef signed __int64 s64;
 # endif
 
-# define ASSEMBLY_INTEL_SYNTAX
-# define ASSEMBLY_BLOCK __asm
+# if defined(_M_IX86)
+#  define ASSEMBLY_INTEL_SYNTAX
+#  define ASSEMBLY_BLOCK __asm
+# endif
 
 # if (_MSC_VER <= 1200)
 #  pragma warning(disable : 4786) // truncation to 255 chars
