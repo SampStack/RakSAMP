@@ -1,4 +1,4 @@
-name: Build and publish containers
+name: Build and publish releases
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
         default: master
         type: string
       image_tag:
-        description: Container tag (dev is mutable)
+        description: Release and container tag (dev is a mutable prerelease)
         required: true
         default: dev
         type: string
@@ -23,22 +23,111 @@ jobs:
     name: Validate client and server
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.source_ref }}
+      - name: Validate release tag
+        env:
+          RELEASE_TAG: ${{ inputs.image_tag }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]
+          git check-ref-format "refs/tags/$RELEASE_TAG"
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build --config Release --parallel
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build -C Release --output-on-failure
       - name: Validate samples
         run: |
           build/bin/raksamp-client --config client/bin/RakSAMPClient.xml --check-config
           build/bin/raksamp-server --config server/bin/RakSAMPServer.xml --check-config
 
+  native-build:
+    name: Native ${{ matrix.platform }} ${{ matrix.arch }}
+    needs: validate
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            arch: x64
+            runner: ubuntu-22.04
+            extension: tar.gz
+            cmake_args: ""
+          - platform: linux
+            arch: arm64
+            runner: ubuntu-22.04-arm
+            extension: tar.gz
+            cmake_args: ""
+          - platform: windows
+            arch: x64
+            runner: windows-2025
+            extension: zip
+            cmake_args: ""
+          - platform: windows
+            arch: arm64
+            runner: windows-11-arm
+            extension: zip
+            cmake_args: ""
+          - platform: macos
+            arch: x64
+            runner: macos-15-intel
+            extension: tar.gz
+            cmake_args: -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
+          - platform: macos
+            arch: arm64
+            runner: macos-15
+            extension: tar.gz
+            cmake_args: -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_ref }}
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON ${{ matrix.cmake_args }}
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Stage packages
+        shell: bash
+        run: |
+          cmake --install build --config Release --prefix package/raksamp-client --component client
+          cmake --install build --config Release --prefix package/raksamp-server --component server
+          executable_suffix=""
+          if [[ "${{ matrix.platform }}" == "windows" ]]; then
+            executable_suffix=".exe"
+          fi
+          "package/raksamp-client/raksamp-client${executable_suffix}" --version
+          "package/raksamp-server/raksamp-server${executable_suffix}" --version
+      - name: Create archives
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          ARCH: ${{ matrix.arch }}
+          EXTENSION: ${{ matrix.extension }}
+        run: |
+          mkdir -p native-dist
+          for product in client server; do
+            archive="raksamp-${product}-${PLATFORM}-${ARCH}.${EXTENSION}"
+            if [[ "$EXTENSION" == "zip" ]]; then
+              (cd package && cmake -E tar cf "../native-dist/$archive" --format=zip -- "raksamp-${product}")
+            else
+              (cd package && cmake -E tar czf "../native-dist/$archive" -- "raksamp-${product}")
+            fi
+          done
+      - name: Upload native archives
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-${{ matrix.platform }}-${{ matrix.arch }}
+          path: native-dist/*
+          if-no-files-found: error
+          retention-days: 30
+
   ghcr-publish:
-    name: Publish ${{ matrix.product }}
+    name: Publish ${{ matrix.product }} container
     needs: validate
     runs-on: ubuntu-24.04
     environment: ghcr-publish
@@ -47,21 +136,22 @@ jobs:
       matrix:
         product: [client, server]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.source_ref }}
       - name: Resolve revision
         id: source
+        shell: bash
         run: echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and publish
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: ${{ matrix.product }}
@@ -74,3 +164,63 @@ jobs:
             org.opencontainers.image.version=${{ inputs.image_tag }}
           cache-from: type=gha,scope=${{ matrix.product }}
           cache-to: type=gha,mode=max,scope=${{ matrix.product }}
+
+  release-publish:
+    name: Publish native release
+    needs: [native-build, ghcr-publish]
+    runs-on: ubuntu-24.04
+    environment: ghcr-publish
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: native-*
+          path: native-dist
+          merge-multiple: true
+      - name: Resolve release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.image_tag }}
+        shell: bash
+        run: |
+          revision=$(git rev-parse HEAD)
+          if [[ "$RELEASE_TAG" == "dev" ]]; then
+            git tag --force "$RELEASE_TAG" "$revision"
+            git push origin "refs/tags/$RELEASE_TAG" --force
+            if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+              gh release edit "$RELEASE_TAG" \
+                --title "RakSAMP development build" \
+                --prerelease \
+                --notes "Rolling development build from \`$revision\`. Replaced only by a manual workflow run."
+            else
+              gh release create "$RELEASE_TAG" \
+                --target "$revision" \
+                --title "RakSAMP development build" \
+                --prerelease \
+                --notes "Rolling development build from \`$revision\`. Replaced only by a manual workflow run."
+            fi
+          else
+            if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+              echo "::error::Release tag $RELEASE_TAG already exists; versioned releases are immutable."
+              exit 1
+            fi
+            git tag "$RELEASE_TAG" "$revision"
+            git push origin "refs/tags/$RELEASE_TAG"
+            gh release create "$RELEASE_TAG" \
+              --verify-tag \
+              --title "RakSAMP $RELEASE_TAG" \
+              --generate-notes
+          fi
+      - name: Publish native archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.image_tag }}
+        run: |
+          (cd native-dist && sha256sum * > SHA256SUMS)
+          gh release upload "$RELEASE_TAG" native-dist/* --clobber

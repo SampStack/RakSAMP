@@ -1,5 +1,25 @@
 # Getting started
 
+## Download a native build
+
+The public rolling [development release](https://github.com/SampStack/RakSAMP/releases/tag/dev) contains separate client and server archives for:
+
+- Linux x64 and ARM64
+- Windows x64 and ARM64
+- macOS Intel and Apple Silicon
+
+Extract the matching archive and keep the executable beside its included XML file. Server archives also include `scripts/`.
+
+```bash
+# Linux or macOS client
+./raksamp-client --config RakSAMPClient.xml --check-config
+
+# Linux or macOS server
+./raksamp-server --config RakSAMPServer.xml --check-config
+```
+
+On Windows, use `raksamp-client.exe` or `raksamp-server.exe`. The macOS archives are unsigned development builds and may be quarantined by Gatekeeper.
+
 ## Requirements
 
 - CMake 3.24+

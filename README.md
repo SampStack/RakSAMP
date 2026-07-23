@@ -6,6 +6,7 @@
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](docs/development.md)
 [![Architectures](https://img.shields.io/badge/arch-x64%20%7C%20ARM64-blue)](docs/development.md)
 [![Containers](https://img.shields.io/badge/GHCR-public-informational?logo=github)](docs/releasing.md)
+[![Native builds](https://img.shields.io/badge/native-downloads-public-informational?logo=github)](https://github.com/SampStack/RakSAMP/releases/tag/dev)
 [![Publish](https://img.shields.io/badge/workflow-manual%20only-orange?logo=githubactions)](.github/workflows/publish-containers.yml)
 
 RakSAMP provides two command-line tools for SA-MP development:
@@ -23,6 +24,7 @@ RakSAMP provides two command-line tools for SA-MP development:
 
 - [Five-minute client start](#five-minute-client-start)
 - [Five-minute server start](#five-minute-server-start)
+- [Downloads](#downloads)
 - [Support matrix](#support-matrix)
 - [Client commands](#client-commands)
 - [Documentation](#documentation)
@@ -72,6 +74,21 @@ docker run --rm -it -p 7777:7777/udp \
 
 > [!CAUTION]
 > `raksamp-server` is a local and CI development tool, not a production game server. Lua scripts have the full Lua 5.4 standard library, including filesystem, process, and dynamic-loading access.
+
+## Downloads
+
+The manual release workflow publishes both delivery formats:
+
+- **Native archives** — run without Docker on Windows, Linux, or macOS, on x64 or ARM64.
+- **Containers** — public `linux/amd64` and `linux/arm64` images on GHCR.
+
+Download the rolling [development release](https://github.com/SampStack/RakSAMP/releases/tag/dev), extract the archive for your product and platform, then run the executable beside its included XML configuration. Development assets are replaced only when a maintainer starts the manual workflow.
+
+macOS archives are currently unsigned. If Gatekeeper quarantines a build you trust, remove the quarantine attribute from the extracted directory:
+
+```bash
+xattr -dr com.apple.quarantine raksamp-client
+```
 
 ## Support matrix
 

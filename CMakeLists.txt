@@ -12,6 +12,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 option(RAKSAMP_BUILD_CLIENT "Build the headless fake client" ON)
 option(RAKSAMP_BUILD_SERVER "Build the Lua development server" ON)
@@ -118,6 +119,15 @@ if(RAKSAMP_BUILD_CLIENT)
             -Wno-write-strings
             -Wno-conversion-null)
     endif()
+    install(TARGETS raksamp-client
+        RUNTIME DESTINATION .
+        COMPONENT client)
+    install(FILES
+        client/bin/RakSAMPClient.xml
+        README.md
+        THIRD_PARTY_NOTICES.md
+        DESTINATION .
+        COMPONENT client)
 endif()
 
 if(RAKSAMP_BUILD_SERVER)
@@ -126,10 +136,7 @@ if(RAKSAMP_BUILD_SERVER)
         URL https://www.lua.org/ftp/lua-5.4.8.tar.gz
         URL_HASH SHA256=4f18ddae154e793e46eeab727c59ef1c0c0c2b744e7b94219710d76f530629ae
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
-    FetchContent_GetProperties(lua)
-    if(NOT lua_POPULATED)
-        FetchContent_Populate(lua)
-    endif()
+    FetchContent_MakeAvailable(lua)
 
     file(GLOB LUA54_SOURCES CONFIGURE_DEPENDS "${lua_SOURCE_DIR}/src/*.c")
     list(REMOVE_ITEM LUA54_SOURCES
@@ -165,4 +172,16 @@ if(RAKSAMP_BUILD_SERVER)
             -Wno-write-strings
             -Wno-conversion-null)
     endif()
+    install(TARGETS raksamp-server
+        RUNTIME DESTINATION .
+        COMPONENT server)
+    install(FILES
+        server/bin/RakSAMPServer.xml
+        README.md
+        THIRD_PARTY_NOTICES.md
+        DESTINATION .
+        COMPONENT server)
+    install(DIRECTORY server/bin/scripts
+        DESTINATION .
+        COMPONENT server)
 endif()
