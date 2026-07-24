@@ -13,6 +13,7 @@ HWND hwndTeleportMenu = NULL;
 static std::mutex commandMutex;
 static std::queue<std::string> commands;
 static int forcedVehicleId = -1;
+static bool forcedPassenger = false;
 static eRunModes forcedPreviousRunMode = RUNMODE_NORMAL;
 
 static void *ReadCommands(void *)
@@ -31,14 +32,21 @@ void NativePumpCommands()
 	if(forcedVehicleId >= 0 && forcedVehicleId < MAX_VEHICLES &&
 		vehiclePool[forcedVehicleId].iDoesExist)
 	{
-		INCAR_SYNC_DATA sync;
-		memset(&sync, 0, sizeof(sync));
-		sync.VehicleID = (VEHICLEID)forcedVehicleId;
-		sync.fQuaternion[0] = 1.0f;
-		sync.fCarHealth = 1000.0f;
-		sync.bytePlayerHealth = (BYTE)settings.fPlayerHealth;
-		sync.bytePlayerArmour = (BYTE)settings.fPlayerArmour;
-		SendInCarFullSyncData(&sync, 1, (PLAYERID)-1);
+		if(forcedPassenger)
+		{
+			SendPassengerFullSyncData((VEHICLEID)forcedVehicleId);
+		}
+		else
+		{
+			INCAR_SYNC_DATA sync;
+			memset(&sync, 0, sizeof(sync));
+			sync.VehicleID = (VEHICLEID)forcedVehicleId;
+			sync.fQuaternion[0] = 1.0f;
+			sync.fCarHealth = 1000.0f;
+			sync.bytePlayerHealth = (BYTE)settings.fPlayerHealth;
+			sync.bytePlayerArmour = (BYTE)settings.fPlayerArmour;
+			SendInCarFullSyncData(&sync, 1, (PLAYERID)-1);
+		}
 	}
 
 	std::string command;
@@ -70,10 +78,32 @@ void NativePumpCommands()
 		if(forcedVehicleId < 0)
 			forcedPreviousRunMode = settings.runMode;
 		forcedVehicleId = vehicleId;
+		forcedPassenger = false;
 		// Normal mode emits on-foot sync every frame. Pause that built-in stream
 		// while the driver is emitting explicit in-car sync.
 		settings.runMode = RUNMODE_STILL;
 		Log("[ENTER_VEHICLE] Entered vehicle %d as driver.", vehicleId);
+		return;
+	}
+
+	if(!strncmp(buffer, "!enterpassenger ", 16))
+	{
+		int vehicleId = atoi(&buffer[16]);
+		if(vehicleId < 0 || vehicleId >= MAX_VEHICLES ||
+			!vehiclePool[vehicleId].iDoesExist)
+		{
+			Log("[ENTER_PASSENGER] Vehicle %d is not streamed in.", vehicleId);
+			return;
+		}
+		SendEnterVehicleNotification((VEHICLEID)vehicleId, 1);
+		playerInfo[g_myPlayerID].iAreWeInAVehicle = 1;
+		if(forcedVehicleId < 0)
+			forcedPreviousRunMode = settings.runMode;
+		forcedVehicleId = vehicleId;
+		forcedPassenger = true;
+		settings.runMode = RUNMODE_STILL;
+		SendPassengerFullSyncData((VEHICLEID)forcedVehicleId, true);
+		Log("[ENTER_PASSENGER] Entered vehicle %d as passenger.", vehicleId);
 		return;
 	}
 
@@ -84,6 +114,7 @@ void NativePumpCommands()
 		playerInfo[g_myPlayerID].iAreWeInAVehicle = 0;
 		Log("[EXIT_VEHICLE] Exited vehicle %d.", forcedVehicleId);
 		forcedVehicleId = -1;
+		forcedPassenger = false;
 		settings.runMode = forcedPreviousRunMode;
 		return;
 	}

@@ -176,12 +176,13 @@ void SendInCarFullSyncData(INCAR_SYNC_DATA *picSync, int iUseCarPos, PLAYERID fo
 }
 
 DWORD dwLastPassengerDataSentTick = GetTickCount();
-void SendPassengerFullSyncData(VEHICLEID vehicleID)
+void SendPassengerFullSyncData(VEHICLEID vehicleID, bool force)
 {
 	if(!vehiclePool[vehicleID].iDoesExist)
 		return;
 
-	if(dwLastPassengerDataSentTick && dwLastPassengerDataSentTick < (GetTickCount() - iNetModeNormalIncarSendRate))
+	if(force || (dwLastPassengerDataSentTick &&
+		dwLastPassengerDataSentTick < (GetTickCount() - iNetModeNormalIncarSendRate)))
 	{
 		RakNet::BitStream bsPassengerSync;
 
@@ -189,6 +190,7 @@ void SendPassengerFullSyncData(VEHICLEID vehicleID)
 		memset(&psSync, 0, sizeof(PASSENGER_SYNC_DATA));
 
 		psSync.VehicleID = vehicleID;
+		psSync.byteSeatFlags = 1;
 
 		psSync.vecPos[0] = vehiclePool[vehicleID].fPos[0];
 		psSync.vecPos[1] = vehiclePool[vehicleID].fPos[1];
