@@ -86,3 +86,5 @@ extern RakClientInterface *pRakClient;
 #ifndef _WIN32
 void NativePumpCommands();
 #endif
+void NativePutPlayerInVehicle(VEHICLEID vehicleId, BYTE seatId);
+void NativeRemovePlayerFromVehicle();

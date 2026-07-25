@@ -1016,6 +1016,26 @@ void ScrSetPlayerFacingAngle(RPCParameters *rpcParams)
 	}
 }
 
+void ScrPutPlayerInVehicle(RPCParameters *rpcParams)
+{
+	PCHAR Data = reinterpret_cast<PCHAR>(rpcParams->input);
+	int iBitLength = rpcParams->numberOfBitsOfData;
+
+	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
+
+	VEHICLEID vehicleId;
+	BYTE seatId;
+	if(!bsData.Read(vehicleId) || !bsData.Read(seatId))
+		return;
+
+	NativePutPlayerInVehicle(vehicleId, seatId);
+}
+
+void ScrRemovePlayerFromVehicle(RPCParameters *)
+{
+	NativeRemovePlayerFromVehicle();
+}
+
 void ScrSetSpawnInfo(RPCParameters *rpcParams)
 {
 	PCHAR Data = reinterpret_cast<PCHAR>(rpcParams->input);
@@ -1286,6 +1306,8 @@ void RegisterRPCs(RakClientInterface *pRakClient)
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrResetMoney, ScrResetMoney);
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrSetPlayerPos, ScrSetPlayerPos);
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrSetPlayerFacingAngle, ScrSetPlayerFacingAngle);
+		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrPutPlayerInVehicle, ScrPutPlayerInVehicle);
+		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrRemovePlayerFromVehicle, ScrRemovePlayerFromVehicle);
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrSetSpawnInfo, ScrSetSpawnInfo);
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrSetPlayerHealth, ScrSetPlayerHealth);
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrSetPlayerArmour, ScrSetPlayerArmour);
@@ -1337,6 +1359,8 @@ void UnRegisterRPCs(RakClientInterface * pRakClient)
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrResetMoney);
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrSetPlayerPos);
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrSetPlayerFacingAngle);
+		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrPutPlayerInVehicle);
+		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrRemovePlayerFromVehicle);
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrSetSpawnInfo);
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrSetPlayerHealth);
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrSetPlayerArmour);
