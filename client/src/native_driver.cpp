@@ -64,6 +64,23 @@ void NativePumpCommands()
 	while(length > 0 && (buffer[length - 1] == '\r' || buffer[length - 1] == '\n'))
 		buffer[--length] = '\0';
 
+	if(!strcmp(buffer, "!gotocp") && forcedVehicleId >= 0 && !forcedPassenger)
+	{
+		if(!settings.CurrentCheckpoint.bActive)
+		{
+			Log("[GOTOCP] There is no active checkpoint.");
+			return;
+		}
+		settings.fNormalModePos[0] = settings.CurrentCheckpoint.fPosition[0];
+		settings.fNormalModePos[1] = settings.CurrentCheckpoint.fPosition[1];
+		settings.fNormalModePos[2] = settings.CurrentCheckpoint.fPosition[2];
+		vehiclePool[forcedVehicleId].fPos[0] = settings.CurrentCheckpoint.fPosition[0];
+		vehiclePool[forcedVehicleId].fPos[1] = settings.CurrentCheckpoint.fPosition[1];
+		vehiclePool[forcedVehicleId].fPos[2] = settings.CurrentCheckpoint.fPosition[2];
+		Log("[GOTOCP] The driven vehicle has been teleported to the active checkpoint.");
+		return;
+	}
+
 	if(!strncmp(buffer, "!entervehicle ", 14))
 	{
 		int vehicleId = atoi(&buffer[14]);
