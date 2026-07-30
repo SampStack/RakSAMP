@@ -69,7 +69,8 @@ struct stVehiclePool
 };
 
 extern int iAreWeConnected, iConnectionRequested, iSpawned, iGameInited, iSpawnsAvailable;
-extern int iReconnectTime;
+extern int iReconnectTime, iNotificationDisplayedBeforeSpawn;
+extern BOOL bIsSpectating;
 extern PLAYERID g_myPlayerID;
 extern char g_szNickName[32];
 

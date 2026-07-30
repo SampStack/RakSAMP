@@ -27,8 +27,6 @@ int dd = 0;
 bool bHealthPulseDirection = false;
 bool bArmourPulseDirection = true;
 
-extern BOOL bIsSpectating;
-
 // following functions
 void onFootUpdateAtNormalPos()
 {
@@ -178,6 +176,20 @@ void sampSpawn()
 	bIsSpectating = 0;
 
 	Log("You have been spawned!");
+}
+
+void sampSpawnAfterSpectating()
+{
+	if(pRakClient == NULL) return;
+
+	// The server arms a spawn before disabling spectator mode. A real client
+	// answers that transition with only the spawn RPC, without requesting
+	// class-selection authorization again.
+	RakNet::BitStream bsSendSpawn;
+	pRakClient->RPC(&RPC_Spawn, &bsSendSpawn, HIGH_PRIORITY, RELIABLE, 0,
+		FALSE, UNASSIGNED_NETWORK_ID, NULL);
+
+	Log("[SPECTATOR] Exited spectator mode and spawned.");
 }
 
 void sampSpam()
@@ -369,8 +381,14 @@ void sendPickUp(int iPickupID)
 
 void selectTextDraw(int iTextDrawID)
 {
+	if(iTextDrawID < 0 || iTextDrawID > 0xFFFF)
+	{
+		Log("[TEXTDRAW] Invalid textdraw ID: %d.", iTextDrawID);
+		return;
+	}
+
 	RakNet::BitStream bsSend;
-	bsSend.Write(iTextDrawID);
+	bsSend.Write((WORD)iTextDrawID);
 	pRakClient->RPC(&RPC_ClickTextDraw, &bsSend, HIGH_PRIORITY, RELIABLE_ORDERED, 0, FALSE, UNASSIGNED_NETWORK_ID, NULL);
 }
 

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(RakSAMP
-    VERSION 0.9.0
+    VERSION 0.9.1
     DESCRIPTION "Cross-platform SA-MP 0.3.7 and 0.3DL fake client and development server"
     LANGUAGES C CXX)
 
@@ -25,6 +25,10 @@ if(BUILD_TESTING)
     add_executable(raknet-container-tests tests/raknet_container_tests.cpp)
     target_include_directories(raknet-container-tests PRIVATE raknet)
     add_test(NAME raknet-containers COMMAND raknet-container-tests)
+
+    add_executable(client-lifecycle-tests tests/client_lifecycle_tests.cpp)
+    target_include_directories(client-lifecycle-tests PRIVATE client/src)
+    add_test(NAME client-lifecycle COMMAND client-lifecycle-tests)
 endif()
 
 set(RAKSAMP_RAKNET_SOURCES

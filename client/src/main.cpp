@@ -3,6 +3,7 @@
 */
 
 #include "main.h"
+#include "client_lifecycle.h"
 
 RakClientInterface *pRakClient = NULL;
 int iAreWeConnected = 0, iConnectionRequested = 0, iSpawned = 0, iGameInited = 0, iSpawnsAvailable = 0;
@@ -19,7 +20,6 @@ FILE *flLog = NULL, *flTextDrawsLog = NULL;
 DWORD dwAutoRunTick = GetTickCount();
 
 extern int iMoney, iDrunkLevel, iLocalPlayerSkin;
-extern BOOL bIsSpectating;
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
@@ -182,7 +182,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			if(settings.runMode == RUNMODE_BARE)
 				goto bare;
 
-			if(!iSpawned)
+			if(ShouldAttemptAutomaticSpawn(iSpawned != 0, bIsSpectating != 0))
 			{
 				if(settings.iManualSpawn != 0)
 				{

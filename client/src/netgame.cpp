@@ -493,6 +493,9 @@ void resetPools(int iRestart, DWORD dwTimeReconnect)
 		iAreWeConnected = 0;
 		iConnectionRequested = 0;
 		iSpawned = 0;
+		iGameInited = 0;
+		iNotificationDisplayedBeforeSpawn = 0;
+		bIsSpectating = 0;
 		iMoney = 0;
 		iDrunkLevel = 0;
 		iLocalPlayerSkin = 0;

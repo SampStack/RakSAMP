@@ -3,6 +3,7 @@
 */
 
 #include "main.h"
+#include "client_lifecycle.h"
 
 int iNetModeNormalOnfootSendRate, iNetModeNormalIncarSendRate, iNetModeFiringSendRate, iNetModeSendMultiplier;
 
@@ -1043,8 +1044,6 @@ void ScrSetSpawnInfo(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	PLAYER_SPAWN_INFO SpawnInfo;
-
 	bsData.Read(SpawnInfo.byteTeam);
 	bsData.Read(SpawnInfo.iSkin);
 	if(settings.protocol == SampProtocol::V03DL)
@@ -1201,10 +1200,12 @@ void ScrShowTextDraw(RPCParameters *rpcParams)
 	CHAR cText[1024];
 	unsigned short cTextLen = 0;
 
-	bsData.Read(wTextID);
-	bsData.Read((PCHAR)&TextDrawTransmit, sizeof(TEXT_DRAW_TRANSMIT));
-	bsData.Read(cTextLen);
-	bsData.Read(cText, cTextLen);
+	if(!bsData.Read(wTextID) ||
+		!bsData.Read((PCHAR)&TextDrawTransmit, sizeof(TEXT_DRAW_TRANSMIT)) ||
+		!bsData.Read(cTextLen) ||
+		cTextLen >= sizeof(cText) ||
+		!bsData.Read(cText, cTextLen))
+		return;
 	cText[cTextLen] = '\0';
 
 	if(settings.uiTextDrawsLogging != 0)
@@ -1239,9 +1240,11 @@ void ScrEditTextDraw(RPCParameters *rpcParams)
 	CHAR cText[1024];
 	unsigned short cTextLen = 0;
 
-	bsData.Read(wTextID);
-	bsData.Read(cTextLen);
-	bsData.Read(cText, cTextLen);
+	if(!bsData.Read(wTextID) ||
+		!bsData.Read(cTextLen) ||
+		cTextLen >= sizeof(cText) ||
+		!bsData.Read(cText, cTextLen))
+		return;
 	cText[cTextLen] = '\0';
 
 	if(settings.uiTextDrawsLogging != 0)
@@ -1257,11 +1260,14 @@ void ScrTogglePlayerSpectating(RPCParameters *rpcParams)
 
 	BOOL bToggle;
 
-	bsData.Read(bToggle);
+	if(!bsData.Read(bToggle))
+		return;
 
-	if(bIsSpectating && !bToggle && !iSpawned)
+	if(ShouldSpawnAfterSpectatorExit(
+		bIsSpectating != 0,
+		bToggle != 0))
 	{
-		sampSpawn();
+		sampSpawnAfterSpectating();
 		iSpawned = 1;
 	}
 

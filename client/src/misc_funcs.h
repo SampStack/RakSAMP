@@ -11,6 +11,7 @@ int sampConnect(char *szHostname, int iPort, char *szNickname, char *szPassword,
 void sampDisconnect(int iTimeout);
 void sampRequestClass(int iClass);
 void sampSpawn();
+void sampSpawnAfterSpectating();
 void sampSpam();
 void sampFakeKill();
 void sampLag();
