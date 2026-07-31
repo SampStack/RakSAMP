@@ -49,21 +49,20 @@ Set the server, nickname, and password in `RakSAMPClient.xml`. Override the conf
 Run one isolated lightweight client worker for a controlled load test:
 
 ```bash
-RAKSAMP_LOAD_PASSWORD='testpassword' \
+RAKSAMP_LOAD_INPUT_RESPONSE='testpassword' \
   ./build/bin/raksamp-client --config RakSAMPClient.xml \
   --load-clients 1 --load-duration 30 --load-connect-rate 5 \
   --load-account-prefix loadtest --load-character-first Load \
-  --load-direct-character
+  --load-player-name '{character}' --load-no-selection
 ```
 
-Load mode expects those numbered accounts and matching characters to exist. It
-ramps connections, completes login and textdraw character selection, sends
-normal sync, and exits nonzero if any client fails or disconnects. Use it only
-against servers you own or are authorized to test.
-
-For servers that use the roleplay character name as the account identity,
-`--load-direct-character` logs in with that generated name and skips textdraw
-character selection.
+Load mode expands `{account}`, `{character}`, and `{index}` in
+`--load-player-name` and `--load-selection-text`. The defaults join as the
+generated account and select the generated character textdraw. Single-identity
+servers can choose another player-name template and `--load-no-selection`.
+The first input/password dialog receives the configured input response. This
+keeps the client independent of a gamemode's login model. Use it only against
+servers you own or are authorized to test.
 
 The mode deliberately runs one client per process because the legacy RakNet
 implementation does not fully isolate peer state at higher in-process
@@ -73,6 +72,8 @@ in total. An optional
 `--load-anticheat-probe-clients N` flag makes the first N clients report
 impossible movement, boosted vitals, and an unauthorized weapon during the
 soak so an authorized server harness can verify its correction paths.
+`--load-password` and `RAKSAMP_LOAD_PASSWORD` remain compatibility aliases for
+the generic input response.
 
 Public container:
 

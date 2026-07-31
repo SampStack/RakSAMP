@@ -60,6 +60,50 @@ std::string AlphaSuffix(std::size_t value)
 		std::toupper(static_cast<unsigned char>(suffix.front())));
 	return suffix;
 }
+
+void ReplaceAll(
+	std::string &value,
+	const std::string &placeholder,
+	const std::string &replacement)
+{
+	std::size_t position = 0;
+	while((position = value.find(placeholder, position)) != std::string::npos)
+	{
+		value.replace(position, placeholder.size(), replacement);
+		position += replacement.size();
+	}
+}
+
+std::string ExpandTemplate(
+	const LoadModeOptions &options,
+	const std::string &value,
+	std::size_t zeroBasedIndex)
+{
+	std::string expanded = value;
+	ReplaceAll(expanded, "{account}", MakeLoadAccountName(options, zeroBasedIndex));
+	ReplaceAll(expanded, "{character}", MakeLoadCharacterName(options, zeroBasedIndex));
+	ReplaceAll(expanded, "{index}", std::to_string(
+		zeroBasedIndex + static_cast<std::size_t>(options.indexOffset) + 1));
+	return expanded;
+}
+
+bool HasUnknownPlaceholder(const std::string &value)
+{
+	return value.find('{') != std::string::npos ||
+		value.find('}') != std::string::npos;
+}
+
+bool IsPlayerName(const std::string &value)
+{
+	if(value.empty() || value.size() > 24)
+		return false;
+	return std::all_of(value.begin(), value.end(), [](unsigned char character)
+	{
+		return std::isalnum(character) ||
+			std::string("_[]().$@=-").find(static_cast<char>(character)) !=
+				std::string::npos;
+	});
+}
 }
 
 LoadOptionParseResult ParseLoadModeOption(
@@ -70,10 +114,10 @@ LoadOptionParseResult ParseLoadModeOption(
 	std::string &error)
 {
 	const std::string option = argv[index];
-	if(option == "--load-direct-character")
+	if(option == "--load-no-selection")
 	{
 		options.requested = true;
-		options.directCharacter = true;
+		options.selectionRequired = false;
 		return LoadOptionParseResult::Matched;
 	}
 	const bool takesValue =
@@ -86,6 +130,9 @@ LoadOptionParseResult ParseLoadModeOption(
 		option == "--load-index-offset" ||
 		option == "--load-account-prefix" ||
 		option == "--load-character-first" ||
+		option == "--load-player-name" ||
+		option == "--load-selection-text" ||
+		option == "--load-input-response" ||
 		option == "--load-password" ||
 		option == "--load-start-file";
 	if(!takesValue)
@@ -133,10 +180,14 @@ LoadOptionParseResult ParseLoadModeOption(
 		options.accountPrefix = value;
 	else if(option == "--load-character-first")
 		options.characterFirstName = value;
+	else if(option == "--load-player-name")
+		options.playerNameTemplate = value;
+	else if(option == "--load-selection-text")
+		options.selectionTextTemplate = value;
+	else if(option == "--load-input-response" || option == "--load-password")
+		options.inputResponse = value;
 	else if(option == "--load-start-file")
 		options.startFile = value;
-	else
-		options.password = value;
 
 	return LoadOptionParseResult::Matched;
 }
@@ -161,8 +212,8 @@ bool ValidateLoadModeOptions(const LoadModeOptions &options, std::string &error)
 	else if(options.indexOffset < 0 ||
 		options.indexOffset + options.clientCount > 100)
 		error = "--load-index-offset plus --load-clients must be between 1 and 100";
-	else if(options.password.empty() || options.password.size() > 255)
-		error = "--load-password is required and must be at most 255 characters";
+	else if(options.inputResponse.empty() || options.inputResponse.size() > 255)
+		error = "--load-input-response is required and must be at most 255 characters";
 	else if(!IsAccountPrefix(options.accountPrefix))
 		error = "--load-account-prefix may contain only letters, digits, and underscores";
 	else if(!IsCharacterFirstName(options.characterFirstName))
@@ -171,6 +222,17 @@ bool ValidateLoadModeOptions(const LoadModeOptions &options, std::string &error)
 		error = "generated account names exceed SA-MP's 24-character limit";
 	else if(MakeLoadCharacterName(options, options.clientCount - 1).size() > 24)
 		error = "generated character names exceed the 24-character limit";
+	else if(HasUnknownPlaceholder(MakeLoadPlayerName(
+		options, options.clientCount - 1)))
+		error = "--load-player-name contains an unknown placeholder";
+	else if(!IsPlayerName(MakeLoadPlayerName(options, options.clientCount - 1)))
+		error = "generated player names must be valid SA-MP names of at most 24 characters";
+	else if(options.selectionRequired &&
+		MakeLoadSelectionText(options, options.clientCount - 1).empty())
+		error = "--load-selection-text must not be empty when selection is enabled";
+	else if(options.selectionRequired &&
+		MakeLoadSelectionText(options, options.clientCount - 1).size() > 1023)
+		error = "--load-selection-text must be at most 1023 characters after expansion";
 	else
 		return true;
 
@@ -181,9 +243,6 @@ std::string MakeLoadAccountName(
 	const LoadModeOptions &options,
 	std::size_t zeroBasedIndex)
 {
-	if(options.directCharacter)
-		return MakeLoadCharacterName(options, zeroBasedIndex);
-
 	const std::size_t effectiveIndex =
 		zeroBasedIndex + static_cast<std::size_t>(options.indexOffset);
 	const std::size_t largest = options.clientCount > 0
@@ -199,10 +258,24 @@ std::string MakeLoadAccountName(
 	return stream.str();
 }
 
+std::string MakeLoadPlayerName(
+	const LoadModeOptions &options,
+	std::size_t zeroBasedIndex)
+{
+	return ExpandTemplate(options, options.playerNameTemplate, zeroBasedIndex);
+}
+
 std::string MakeLoadCharacterName(
 	const LoadModeOptions &options,
 	std::size_t zeroBasedIndex)
 {
 	return options.characterFirstName + "_" + AlphaSuffix(
 		zeroBasedIndex + static_cast<std::size_t>(options.indexOffset));
+}
+
+std::string MakeLoadSelectionText(
+	const LoadModeOptions &options,
+	std::size_t zeroBasedIndex)
+{
+	return ExpandTemplate(options, options.selectionTextTemplate, zeroBasedIndex);
 }

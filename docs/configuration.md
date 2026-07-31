@@ -31,7 +31,7 @@ Harnesses use numbered account names (`loadtest0001`, `loadtest0002`, …) and v
 roleplay character names (`Load_Aaaa`, `Load_Aaab`, …):
 
 ```bash
-RAKSAMP_LOAD_PASSWORD='testpassword' raksamp-client \
+RAKSAMP_LOAD_INPUT_RESPONSE='testpassword' raksamp-client \
   --config path/to/RakSAMPClient.xml \
   --load-clients 1 \
   --load-duration 30 \
@@ -41,7 +41,8 @@ RAKSAMP_LOAD_PASSWORD='testpassword' raksamp-client \
   --load-anticheat-probe-clients 0 \
   --load-account-prefix loadtest \
   --load-character-first Load \
-  --load-direct-character
+  --load-player-name '{character}' \
+  --load-no-selection
 ```
 
 The generated accounts and characters must already exist. `--load-clients`
@@ -50,16 +51,19 @@ RakNet implementation. A load harness may shard up to 100 clients
 across processes using non-overlapping `--load-index-offset` values and a common
 `--load-start-file`; each process waits until the harness creates that file
 before beginning its soak. The process reports aggregate readiness and fails if any
-client cannot authenticate, select its character, spawn, or remain connected
-through the soak. `--load-password` is also accepted, but the environment
-variable avoids exposing the account password in process listings.
+client cannot authenticate, satisfy its configured selection, spawn, or remain
+connected through the soak. `--load-input-response` is also accepted, but the
+environment variable avoids exposing credentials in process listings. The
+older `--load-password` and `RAKSAMP_LOAD_PASSWORD` names remain compatibility
+aliases.
 When `--load-anticheat-probe-clients` is nonzero, the first N clients emit
 impossible velocity, boosted health and armour, and an unauthorized weapon
 only after every client is active. This is an opt-in integrity probe for
 servers you own; the server-side harness must verify the expected corrections.
-`--load-direct-character` supports servers whose roleplay nickname is also the
-account identity: it logs in with the generated character name and considers
-character selection complete before the server exits spectator mode.
+`--load-player-name` and `--load-selection-text` accept `{account}`,
+`{character}`, and `{index}` placeholders. Their defaults preserve the common
+account-login plus character-textdraw flow. `--load-no-selection` supports
+single-identity servers without teaching RakSAMP about a specific gamemode.
 
 Do not place stress commands in `<autorun>` unless a controlled test explicitly requires them.
 

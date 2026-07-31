@@ -46,15 +46,15 @@ enum class LoadSessionState
 struct LoadSession
 {
 	std::size_t index = 0;
-	std::string accountName;
-	std::string characterName;
-	std::string password;
+	std::string playerName;
+	std::string selectionText;
+	std::string inputResponse;
 	RakClientInterface *client = nullptr;
 	LoadSessionState state = LoadSessionState::Pending;
 	std::string failure;
-	bool loginSubmitted = false;
-	bool directCharacter = false;
-	bool characterSelected = false;
+	bool inputSubmitted = false;
+	bool selectionRequired = true;
+	bool selectionSatisfied = false;
 	bool spawnSent = false;
 	bool spectating = false;
 	bool stopping = false;
@@ -238,18 +238,18 @@ void LoadDialog(RPCParameters *parameters)
 		return;
 	}
 
-	if(!session->loginSubmitted &&
+	if(!session->inputSubmitted &&
 		(style == DIALOG_STYLE_PASSWORD || style == DIALOG_STYLE_INPUT))
 	{
-		session->loginSubmitted = true;
-		SendDialogResponse(*session, dialogId, session->password);
+		session->inputSubmitted = true;
+		SendDialogResponse(*session, dialogId, session->inputResponse);
 	}
 }
 
 void LoadShowTextDraw(RPCParameters *parameters)
 {
 	LoadSession *session = Current();
-	if(session == nullptr || session->characterSelected)
+	if(session == nullptr || session->selectionSatisfied)
 		return;
 
 	RakNet::BitStream data = RpcInput(parameters);
@@ -265,14 +265,14 @@ void LoadShowTextDraw(RPCParameters *parameters)
 		return;
 	text[textLength] = '\0';
 
-	if(!transmit.byteSelectable || session->characterName != text)
+	if(!transmit.byteSelectable || session->selectionText != text)
 		return;
 
 	RakNet::BitStream output;
 	output.Write(textDrawId);
 	session->client->RPC(&RPC_ClickTextDraw, &output, HIGH_PRIORITY,
 		RELIABLE_ORDERED, 0, FALSE, UNASSIGNED_NETWORK_ID, nullptr);
-	session->characterSelected = true;
+	session->selectionSatisfied = true;
 }
 
 void LoadToggleSpectating(RPCParameters *parameters)
@@ -292,15 +292,15 @@ void LoadToggleSpectating(RPCParameters *parameters)
 	const bool wasSpectating = session->spectating;
 	session->spectating = enabled != FALSE;
 	if(wasSpectating && !session->spectating &&
-		session->characterSelected && !session->spawnSent)
+		session->selectionSatisfied && !session->spawnSent)
 	{
 		session->spawnSent = true;
 		RakNet::BitStream empty;
 		session->client->RPC(&RPC_Spawn, &empty, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
 			FALSE, UNASSIGNED_NETWORK_ID, nullptr);
 		session->state = LoadSessionState::Active;
-		std::fill(session->password.begin(), session->password.end(), '\0');
-		session->password.clear();
+		std::fill(session->inputResponse.begin(), session->inputResponse.end(), '\0');
+		session->inputResponse.clear();
 		session->nextSyncAt = Clock::now();
 	}
 }
@@ -446,8 +446,8 @@ void RegisterLoadCallbacks(LoadSession &session)
 bool StartSession(LoadSession &session)
 {
 	DestroyClient(session);
-	session.loginSubmitted = false;
-	session.characterSelected = session.directCharacter;
+	session.inputSubmitted = false;
+	session.selectionSatisfied = !session.selectionRequired;
 	session.spawnSent = false;
 	session.spectating = false;
 	session.failure.clear();
@@ -543,7 +543,7 @@ void SendClientJoin(LoadSession &session, Packet *packet)
 	// SA-MP serials must remain divisible by 1001. gen_gpci's random source
 	// already produces a distinct value for each call in this process.
 	gen_gpci(gpci, 0x3e9);
-	const BYTE accountLength = static_cast<BYTE>(session.accountName.size());
+	const BYTE playerNameLength = static_cast<BYTE>(session.playerName.size());
 	const BYTE gpciLength = static_cast<BYTE>(std::strlen(gpci));
 	const BYTE clientVersionLength =
 		static_cast<BYTE>(std::strlen(settings.szClientVersion));
@@ -551,8 +551,8 @@ void SendClientJoin(LoadSession &session, Packet *packet)
 	RakNet::BitStream output;
 	output.Write(version);
 	output.Write(mod);
-	output.Write(accountLength);
-	output.Write(session.accountName.data(), accountLength);
+	output.Write(playerNameLength);
+	output.Write(session.playerName.data(), playerNameLength);
 	output.Write(challengeResponse);
 	output.Write(gpciLength);
 	output.Write(gpci, gpciLength);
@@ -664,8 +664,8 @@ void SendSync(
 		{
 			session.probeAnnounced = true;
 			std::printf(
-				"[LOAD] probe account=%s index=%zu local-port=%hu\n",
-				session.accountName.c_str(),
+				"[LOAD] probe player=%s index=%zu local-port=%hu\n",
+				session.playerName.c_str(),
 				session.index,
 				session.localPort);
 			std::fflush(stdout);
@@ -710,10 +710,10 @@ int RunLoadMode(const LoadModeOptions &options)
 	{
 		auto session = std::make_unique<LoadSession>();
 		session->index = static_cast<std::size_t>(index);
-		session->accountName = MakeLoadAccountName(options, session->index);
-		session->characterName = MakeLoadCharacterName(options, session->index);
-		session->directCharacter = options.directCharacter;
-		session->password = options.password;
+		session->playerName = MakeLoadPlayerName(options, session->index);
+		session->selectionText = MakeLoadSelectionText(options, session->index);
+		session->selectionRequired = options.selectionRequired;
+		session->inputResponse = options.inputResponse;
 		sessions.push_back(std::move(session));
 	}
 
@@ -916,7 +916,7 @@ int RunLoadMode(const LoadModeOptions &options)
 		{
 			if(session->state == LoadSessionState::Failed && printed++ < 10)
 				std::fprintf(stderr, "[LOAD]   %s: %s\n",
-					session->accountName.c_str(), session->failure.c_str());
+					session->playerName.c_str(), session->failure.c_str());
 		}
 		if(failed > 10)
 			std::fprintf(stderr, "[LOAD]   ... and %zu more failures\n",

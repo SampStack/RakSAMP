@@ -378,15 +378,18 @@ static void PrintClientUsage()
 	printf("Usage: raksamp-client [--config PATH] [--protocol 0.3.7|0.3DL]\n");
 	printf("                      [--check-config] [--help] [--version]\n");
 	printf("       raksamp-client [--config PATH] [--protocol 0.3.7|0.3DL]\n");
-	printf("                      --load-clients N --load-password PASSWORD\n");
+	printf("                      --load-clients N --load-input-response VALUE\n");
 	printf("                      [--load-duration SECONDS] [--load-connect-rate N]\n");
 	printf("                      [--load-sync-rate N] [--load-ready-timeout SECONDS]\n");
 	printf("                      [--load-anticheat-probe-clients N]\n");
 	printf("                      [--load-index-offset N] [--load-start-file PATH]\n");
 	printf("                      [--load-account-prefix PREFIX]\n");
 	printf("                      [--load-character-first FIRST]\n");
-	printf("                      [--load-direct-character]\n");
-	printf("Environment: RAKSAMP_LOAD_PASSWORD may replace --load-password.\n");
+	printf("                      [--load-player-name TEMPLATE]\n");
+	printf("                      [--load-selection-text TEMPLATE]\n");
+	printf("                      [--load-no-selection]\n");
+	printf("Templates support {account}, {character}, and {index}.\n");
+	printf("Environment: RAKSAMP_LOAD_INPUT_RESPONSE supplies the input response.\n");
 }
 
 int main(int argc, char **argv)
@@ -459,11 +462,14 @@ int main(int argc, char **argv)
 	}
 	if(loadOptions.requested)
 	{
-		if(loadOptions.password.empty())
+		if(loadOptions.inputResponse.empty())
 		{
-			const char *environmentPassword = getenv("RAKSAMP_LOAD_PASSWORD");
-			if(environmentPassword != NULL)
-				loadOptions.password = environmentPassword;
+			const char *environmentResponse =
+				getenv("RAKSAMP_LOAD_INPUT_RESPONSE");
+			if(environmentResponse == NULL)
+				environmentResponse = getenv("RAKSAMP_LOAD_PASSWORD");
+			if(environmentResponse != NULL)
+				loadOptions.inputResponse = environmentResponse;
 		}
 		std::string error;
 		if(!ValidateLoadModeOptions(loadOptions, error))

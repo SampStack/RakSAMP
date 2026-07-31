@@ -13,10 +13,12 @@ struct LoadModeOptions
 	int readyTimeoutSeconds = 180;
 	int antiCheatProbeClients = 0;
 	int indexOffset = 0;
-	bool directCharacter = false;
+	bool selectionRequired = true;
 	std::string accountPrefix = "loadtest";
 	std::string characterFirstName = "Load";
-	std::string password;
+	std::string playerNameTemplate = "{account}";
+	std::string selectionTextTemplate = "{character}";
+	std::string inputResponse;
 	std::string startFile;
 };
 
@@ -35,9 +37,15 @@ LoadOptionParseResult ParseLoadModeOption(
 	std::string &error);
 
 bool ValidateLoadModeOptions(const LoadModeOptions &options, std::string &error);
+std::string MakeLoadPlayerName(
+	const LoadModeOptions &options,
+	std::size_t zeroBasedIndex);
 std::string MakeLoadAccountName(
 	const LoadModeOptions &options,
 	std::size_t zeroBasedIndex);
 std::string MakeLoadCharacterName(
+	const LoadModeOptions &options,
+	std::size_t zeroBasedIndex);
+std::string MakeLoadSelectionText(
 	const LoadModeOptions &options,
 	std::size_t zeroBasedIndex);

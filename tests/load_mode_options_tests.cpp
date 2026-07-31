@@ -46,7 +46,7 @@ int main()
 	Parse(options, "--load-index-offset", "99");
 	Parse(options, "--load-account-prefix", "rp_load");
 	Parse(options, "--load-character-first", "Load");
-	Parse(options, "--load-password", "testpassword");
+	Parse(options, "--load-input-response", "testpassword");
 	Parse(options, "--load-start-file", "/tmp/raksamp-load.start");
 
 	std::string error;
@@ -54,11 +54,17 @@ int main()
 	assert(ValidateLoadModeOptions(options, error));
 	assert(MakeLoadAccountName(options, 0) == "rp_load0100");
 	assert(MakeLoadCharacterName(options, 0) == "Load_Aadv");
+	assert(MakeLoadPlayerName(options, 0) == "rp_load0100");
+	assert(MakeLoadSelectionText(options, 0) == "Load_Aadv");
 	assert(options.startFile == "/tmp/raksamp-load.start");
 
-	ParseFlag(options, "--load-direct-character");
-	assert(options.directCharacter);
-	assert(MakeLoadAccountName(options, 0) == "Load_Aadv");
+	Parse(options, "--load-player-name", "test_{character}_{index}");
+	Parse(options, "--load-selection-text", "Select {account}");
+	ParseFlag(options, "--load-no-selection");
+	assert(!options.selectionRequired);
+	assert(MakeLoadPlayerName(options, 0) == "test_Load_Aadv_100");
+	assert(MakeLoadSelectionText(options, 0) == "Select rp_load0100");
+	assert(ValidateLoadModeOptions(options, error));
 
 	options.clientCount = 2;
 	assert(!ValidateLoadModeOptions(options, error));
@@ -70,7 +76,10 @@ int main()
 	assert(!ValidateLoadModeOptions(options, error));
 	options.indexOffset = 0;
 	options.clientCount = 1;
-	options.password.clear();
+	options.inputResponse.clear();
+	assert(!ValidateLoadModeOptions(options, error));
+	options.inputResponse = "testpassword";
+	options.playerNameTemplate = "{unknown}";
 	assert(!ValidateLoadModeOptions(options, error));
 
 	char executable[] = "raksamp-client";
@@ -79,6 +88,14 @@ int main()
 	int index = 1;
 	assert(ParseLoadModeOption(2, unknownArguments, index, options, error) ==
 		LoadOptionParseResult::NotMatched);
+
+	LoadModeOptions compatible;
+	Parse(compatible, "--load-clients", "1");
+	Parse(compatible, "--load-password", "legacy-password");
+	assert(compatible.inputResponse == "legacy-password");
+	assert(MakeLoadPlayerName(compatible, 0) == "loadtest0001");
+	assert(MakeLoadSelectionText(compatible, 0) == "Load_Aaaa");
+	assert(ValidateLoadModeOptions(compatible, error));
 
 	LoadModeOptions incomplete;
 	Parse(incomplete, "--load-duration", "30");
