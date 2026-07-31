@@ -1,0 +1,4 @@
+model_auto_compact_token_limit_scope = "body_after_prefix"
+
+[features]
+hooks = true

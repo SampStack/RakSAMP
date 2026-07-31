@@ -1,0 +1,18 @@
+{
+  "description": "Restore the concise RakSAMP handoff after context compaction.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "^compact$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/load-handoff.sh\"",
+            "statusMessage": "Restoring RakSAMP handoff",
+            "additionalContextLimit": 1600
+          }
+        ]
+      }
+    ]
+  }
+}

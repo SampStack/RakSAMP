@@ -4,9 +4,11 @@ Publication is intentionally manual.
 
 1. Open **Actions → Build and publish releases → Run workflow**.
 2. Set `source_ref` to the reviewed branch, tag, or commit. It defaults to `master`.
-3. Leave `image_tag=dev` for the rolling development release, or enter an intentional version.
-4. Review the validation and six native build jobs.
-5. Approve the protected `ghcr-publish` environment.
+3. Keep `push_dev` enabled to update the rolling development release.
+4. Leave `release_version` empty for dev-only publication, or enter an intentional immutable
+   version such as `v0.9.4`. A single run may publish both the version and `dev` from one revision.
+5. Review the validation and six native build jobs.
+6. Approve the protected `ghcr-publish` environment.
 
 ## Development builds
 
@@ -20,7 +22,8 @@ It does not publish `latest` and is never triggered by a push or pull request.
 
 ## Versioned builds
 
-Any `image_tag` other than `dev` creates a new, non-prerelease GitHub Release and matching container tags. Versioned tags are immutable: the workflow fails if the tag already exists.
+Any non-empty `release_version` creates a new, non-prerelease GitHub Release and matching container
+tags. Versioned tags are immutable: the workflow fails if the tag already exists.
 
 Use an intentional version such as `v0.9.0` only after accepting the `dev` build on the supported platforms.
 

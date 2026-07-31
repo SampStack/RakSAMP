@@ -1,0 +1,4 @@
+interface:
+  display_name: "Maintain RakSAMP"
+  short_description: "Build, test, and release generic RakSAMP changes"
+  default_prompt: "Use $maintain-raksamp to implement and validate a generic RakSAMP capability for this task."
