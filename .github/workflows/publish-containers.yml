@@ -218,6 +218,27 @@ jobs:
           (cd native-dist && sha256sum * > SHA256SUMS)
 
           if [[ -n "$RELEASE_TAG" ]]; then
+            previous_tag=$(git describe --tags --abbrev=0 --exclude=dev "$revision^")
+            generated_notes=$(gh api --method POST \
+              "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+              -f tag_name="$RELEASE_TAG" \
+              -f target_commitish="$revision" \
+              -f previous_tag_name="$previous_tag" \
+              --jq .body)
+            notes_file="$RUNNER_TEMP/release-notes.md"
+            {
+              printf '# RakSAMP %s\n\n' "$RELEASE_TAG"
+              printf 'Built once from commit [`%s`](%s/%s/commit/%s).\n\n' \
+                "$revision" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$revision"
+              printf '## Compatibility\n\n'
+              printf -- '- SA-MP 0.3.7 and 0.3DL protocols\n'
+              printf -- '- Native x64 and arm64 packages for Linux, Windows, and macOS\n'
+              printf -- '- Multi-architecture client and server containers for linux/amd64 and linux/arm64\n\n'
+              printf '## Changes since %s\n\n%s\n\n' "$previous_tag" "$generated_notes"
+              printf '**Full comparison:** %s/%s/compare/%s...%s\n' \
+                "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$previous_tag" "$RELEASE_TAG"
+            } > "$notes_file"
+
             if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
               echo "::error::Release tag $RELEASE_TAG already exists; versioned releases are immutable."
               exit 1
@@ -227,7 +248,7 @@ jobs:
             gh release create "$RELEASE_TAG" \
               --verify-tag \
               --title "RakSAMP $RELEASE_TAG" \
-              --generate-notes
+              --notes-file "$notes_file"
             gh release upload "$RELEASE_TAG" native-dist/*
           fi
 
