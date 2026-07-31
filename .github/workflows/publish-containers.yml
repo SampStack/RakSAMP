@@ -18,6 +18,11 @@ on:
         required: true
         default: true
         type: boolean
+      native_consumers_green:
+        description: Confirm consuming gamemodes passed native validation
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -40,7 +45,12 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.release_version }}
           PUSH_DEV: ${{ inputs.push_dev }}
+          CONSUMERS_GREEN: ${{ inputs.native_consumers_green }}
         run: |
+          if [[ "$CONSUMERS_GREEN" != "true" ]]; then
+            echo "::error::Consuming gamemodes must pass native validation before publication."
+            exit 1
+          fi
           if [[ -z "$RELEASE_TAG" && "$PUSH_DEV" != "true" ]]; then
             echo "::error::Set a release version or enable Push to dev."
             exit 1
@@ -66,91 +76,14 @@ jobs:
           build/bin/raksamp-server --config server/bin/RakSAMPServer.xml --check-config
 
   native-build:
-    name: Native ${{ matrix.platform }} ${{ matrix.arch }}
     needs: validate
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: linux
-            arch: x64
-            runner: ubuntu-22.04
-            extension: tar.gz
-            cmake_args: ""
-          - platform: linux
-            arch: arm64
-            runner: ubuntu-22.04-arm
-            extension: tar.gz
-            cmake_args: ""
-          - platform: windows
-            arch: x64
-            runner: windows-2025
-            extension: zip
-            cmake_args: ""
-          - platform: windows
-            arch: arm64
-            runner: windows-11-arm
-            extension: zip
-            cmake_args: ""
-          - platform: macos
-            arch: x64
-            runner: macos-15-intel
-            extension: tar.gz
-            cmake_args: -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
-          - platform: macos
-            arch: arm64
-            runner: macos-15
-            extension: tar.gz
-            cmake_args: -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.validate.outputs.revision }}
-      - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON ${{ matrix.cmake_args }}
-      - name: Build
-        run: cmake --build build --config Release --parallel
-      - name: Test
-        run: ctest --test-dir build -C Release --output-on-failure
-      - name: Stage packages
-        shell: bash
-        run: |
-          cmake --install build --config Release --prefix package/raksamp-client --component client
-          cmake --install build --config Release --prefix package/raksamp-server --component server
-          executable_suffix=""
-          if [[ "${{ matrix.platform }}" == "windows" ]]; then
-            executable_suffix=".exe"
-          fi
-          "package/raksamp-client/raksamp-client${executable_suffix}" --version
-          "package/raksamp-server/raksamp-server${executable_suffix}" --version
-      - name: Create archives
-        shell: bash
-        env:
-          PLATFORM: ${{ matrix.platform }}
-          ARCH: ${{ matrix.arch }}
-          EXTENSION: ${{ matrix.extension }}
-        run: |
-          mkdir -p native-dist
-          for product in client server; do
-            archive="raksamp-${product}-${PLATFORM}-${ARCH}.${EXTENSION}"
-            if [[ "$EXTENSION" == "zip" ]]; then
-              (cd package && cmake -E tar cf "../native-dist/$archive" --format=zip -- "raksamp-${product}")
-            else
-              (cd package && cmake -E tar czf "../native-dist/$archive" -- "raksamp-${product}")
-            fi
-          done
-      - name: Upload native archives
-        uses: actions/upload-artifact@v6
-        with:
-          name: native-${{ matrix.platform }}-${{ matrix.arch }}
-          path: native-dist/*
-          if-no-files-found: error
-          retention-days: 30
+    uses: ./.github/workflows/native-build.yml
+    with:
+      source_ref: ${{ needs.validate.outputs.revision }}
 
   ghcr-publish:
     name: Publish ${{ matrix.product }} container tags
-    needs: validate
+    needs: [validate, native-build]
     runs-on: ubuntu-24.04
     environment: ghcr-publish
     strategy:
@@ -194,7 +127,7 @@ jobs:
 
   release-publish:
     name: Publish native release
-    needs: [native-build, ghcr-publish]
+    needs: [validate, native-build, ghcr-publish]
     runs-on: ubuntu-24.04
     environment: ghcr-publish
     permissions:
@@ -234,7 +167,7 @@ jobs:
                 "$revision" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$revision"
               printf '## Compatibility\n\n'
               printf -- '- SA-MP 0.3.7 and 0.3DL protocols\n'
-              printf -- '- Native x64 and arm64 packages for Linux, Windows, and macOS\n'
+              printf -- '- Native packages for Linux x64/arm64, Windows x64, and macOS x64/arm64\n'
               printf -- '- Client and server containers for linux/amd64\n\n'
               printf '## Changes since %s\n\n%s\n\n' "$previous_tag" "$generated_notes"
               printf '**Full comparison:** %s/%s/compare/%s...%s\n' \

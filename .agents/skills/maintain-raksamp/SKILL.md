@@ -21,9 +21,10 @@ Keep RakSAMP a reusable public SA-MP/open.mp protocol tool while satisfying real
    - Gamemode-driven gap: run its narrowest consuming scenario after RakSAMP passes locally.
    - Container delivery: use `make image` only when the image boundary changed or publication is
      being accepted.
+   - Platform/delivery: require all five build-only CI jobs for the exact pushed revision.
 4. Update `docs/AGENT-HANDOFF.md`; commit the completed slice on `master` using the established
    conventional style.
-5. Push `master` after validation. Do not publish until NGRP and Roleplay pass their applicable
+5. Push `master` after validation. Do not publish until consuming gamemodes pass their applicable
    native consumer validation; then watch the requested workflow and verify its artifacts.
 
 ## Release commands
@@ -54,7 +55,7 @@ Resolve the run with `gh run list --workflow publish-containers.yml --limit 1`, 
 ## Safety
 
 - Confirm `master` is current, tests passed, and the intended commit is pushed before publishing.
-- Published client/server containers are linux/amd64 only; keep native x64/arm64 archives separate.
+- Published client/server containers are linux/amd64 only; keep the five native targets separate.
 - `dev` is mutable. Versioned tags and releases are immutable; never invent a version.
 - Inspect `docker system df` after container-heavy work. Use the safe `docker-clean` workflow only
   for meaningful reclaimable residue; never delete volumes or deep-clean without authorization.

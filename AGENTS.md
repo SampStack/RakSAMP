@@ -21,7 +21,7 @@
 
 ## Consumer repositories
 
-- NGRP and Roleplay may expose genuine emulation gaps. Treat their behavior as acceptance evidence,
+- Gamemodes may expose genuine emulation gaps. Treat their behavior as acceptance evidence,
   not as an excuse for consumer-specific implementation.
 - When invoked from a gamemode project, use explicit `git -C` commands and keep commits, status,
   build outputs, and handoffs separate for each repository.
@@ -32,10 +32,11 @@
 
 - Follow `docs/development.md` and the `maintain-raksamp` skill. Use focused `ctest -R` first;
   reserve `make test`, image builds, and multi-platform publication for their actual boundary.
-- A current validated task may push `master`. Publish mutable `dev` only after NGRP and Roleplay
+- Platform or delivery changes require the five-target build-only workflow for the exact revision.
+- A current validated task may push `master`. Publish mutable `dev` only after consuming gamemodes
   pass their applicable native consumer validation. An immutable release also requires an explicit
   version from the user.
-- Native archives cover x64 and arm64. GHCR client/server images are linux/amd64 only and disable
+- Native archives cover Linux x64/arm64, Windows x64, and macOS x64/arm64. GHCR client/server images are linux/amd64 only and disable
   provenance/SBOM attestations so package metadata contains no `unknown/unknown` platform.
 - After container-heavy work, inspect `docker system df`. Use the safe `docker-clean` skill only
   when it shows meaningful reclaimable residue. Deep cleanup and volume deletion require explicit
