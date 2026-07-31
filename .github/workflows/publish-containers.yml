@@ -202,5 +202,7 @@ jobs:
                 --prerelease \
                 --notes "Rolling development build from \`$revision\`. Replaced only by a manual workflow run."
             fi
+            gh release delete-asset dev raksamp-client-windows-arm64.zip --yes 2>/dev/null || true
+            gh release delete-asset dev raksamp-server-windows-arm64.zip --yes 2>/dev/null || true
             gh release upload dev native-dist/* --clobber
           fi
