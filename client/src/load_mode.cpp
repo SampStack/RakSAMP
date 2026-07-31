@@ -18,6 +18,10 @@
 #include <thread>
 #include <vector>
 
+#ifdef _WIN32
+#include <float.h>
+#endif
+
 namespace
 {
 using Clock = std::chrono::steady_clock;
@@ -85,6 +89,15 @@ volatile std::sig_atomic_t interrupted = 0;
 LoadSession *Current()
 {
 	return currentSession;
+}
+
+bool IsFinite(float value)
+{
+#ifdef _WIN32
+	return _finite(value) != 0;
+#else
+	return std::isfinite(value);
+#endif
 }
 
 void Fail(LoadSession &session, const std::string &reason)
@@ -304,7 +317,7 @@ void LoadSetPosition(RPCParameters *parameters)
 		!std::all_of(
 			std::begin(position),
 			std::end(position),
-			[](float value) { return std::isfinite(value); }))
+			[](float value) { return IsFinite(value); }))
 	{
 		Fail(*session, "malformed position RPC");
 		return;
@@ -319,7 +332,7 @@ void LoadSetFacingAngle(RPCParameters *parameters)
 		return;
 	RakNet::BitStream data = RpcInput(parameters);
 	float angle = 0.0f;
-	if(!data.Read(angle) || !std::isfinite(angle))
+	if(!data.Read(angle) || !IsFinite(angle))
 	{
 		Fail(*session, "malformed facing-angle RPC");
 		return;
@@ -350,8 +363,8 @@ void LoadSetSpawnInfo(RPCParameters *parameters)
 		!std::all_of(
 			std::begin(session->position),
 			std::end(session->position),
-			[](float value) { return std::isfinite(value); }) ||
-		!std::isfinite(session->facingAngle))
+			[](float value) { return IsFinite(value); }) ||
+		!IsFinite(session->facingAngle))
 	{
 		Fail(*session, "malformed spawn-info RPC");
 	}
@@ -364,7 +377,7 @@ void LoadSetHealth(RPCParameters *parameters)
 		return;
 	RakNet::BitStream data = RpcInput(parameters);
 	float health = 0.0f;
-	if(!data.Read(health) || !std::isfinite(health))
+	if(!data.Read(health) || !IsFinite(health))
 	{
 		Fail(*session, "malformed health RPC");
 		return;
@@ -379,7 +392,7 @@ void LoadSetArmour(RPCParameters *parameters)
 		return;
 	RakNet::BitStream data = RpcInput(parameters);
 	float armour = 0.0f;
-	if(!data.Read(armour) || !std::isfinite(armour))
+	if(!data.Read(armour) || !IsFinite(armour))
 	{
 		Fail(*session, "malformed armour RPC");
 		return;
@@ -873,7 +886,8 @@ int RunLoadMode(const LoadModeOptions &options)
 			int attempts = 0;
 			for(const auto &session : sessions)
 				attempts += session->connectionAttempts;
-			const int retries = std::max(0, attempts - static_cast<int>(started));
+			const int retries =
+				(std::max)(0, attempts - static_cast<int>(started));
 			std::printf(
 				"[LOAD] progress started=%zu active=%zu failed=%zu retries=%d\n",
 				started, active, failed, retries);
