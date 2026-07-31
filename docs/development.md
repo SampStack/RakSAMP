@@ -21,7 +21,8 @@ dotnet build RakSAMP.slnx --configuration Release --no-restore
 dotnet msbuild RakSAMP.slnx -t:Test -p:Configuration=Release
 ```
 
-Target platforms are Windows, Linux, and macOS on x64 and ARM64. Linux amd64 and arm64 are also built as containers.
+Target platforms are Windows, Linux, and macOS on x64 and ARM64. Containers intentionally target
+only Linux amd64; native arm64 remains available as an archive.
 
 ## Layout
 

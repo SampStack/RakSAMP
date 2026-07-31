@@ -23,8 +23,8 @@ Keep RakSAMP a reusable public SA-MP/open.mp protocol tool while satisfying real
      being accepted.
 4. Update `docs/AGENT-HANDOFF.md`; commit the completed slice on `master` using the established
    conventional style.
-5. Push `master` and publish `dev` when the current task requires consumers to receive the validated
-   change. Watch the workflow and verify the requested artifact.
+5. Push `master` after validation. Do not publish until NGRP and Roleplay pass their applicable
+   native consumer validation; then watch the requested workflow and verify its artifacts.
 
 ## Release commands
 
@@ -54,6 +54,7 @@ Resolve the run with `gh run list --workflow publish-containers.yml --limit 1`, 
 ## Safety
 
 - Confirm `master` is current, tests passed, and the intended commit is pushed before publishing.
+- Published client/server containers are linux/amd64 only; keep native x64/arm64 archives separate.
 - `dev` is mutable. Versioned tags and releases are immutable; never invent a version.
 - Inspect `docker system df` after container-heavy work. Use the safe `docker-clean` workflow only
   for meaningful reclaimable residue; never delete volumes or deep-clean without authorization.

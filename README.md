@@ -109,7 +109,7 @@ docker run --rm -it -p 7777:7777/udp \
 The manual release workflow publishes both delivery formats:
 
 - **Native archives** — run without Docker on Windows, Linux, or macOS, on x64 or ARM64.
-- **Containers** — public `linux/amd64` and `linux/arm64` images on GHCR.
+- **Containers** — public `linux/amd64` images on GHCR.
 
 Download the rolling [development release](https://github.com/SampStack/RakSAMP/releases/tag/dev), extract the archive for your product and platform, then run the executable beside its included XML configuration. Development assets are replaced only when a maintainer starts the manual workflow.
 
@@ -133,7 +133,7 @@ xattr -dr com.apple.quarantine raksamp-client
 | DFF/TXD asset storage or hosting | ❌ | ❌ |
 | Windows, Linux, macOS | ✅ | ✅ |
 | x64 and ARM64 | ✅ | ✅ |
-| Linux amd64/arm64 containers | ✅ | ✅ |
+| Linux amd64 containers | ✅ | ✅ |
 
 The maintained products are command-line only. `RakSAMP.slnx` provides a modern
 Visual Studio and MSBuild entry point backed by CMake. Historical Visual Studio

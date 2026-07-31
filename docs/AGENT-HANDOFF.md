@@ -5,24 +5,27 @@
 
 ## Active slice
 
-- Status: setup ready
-- Outcome: maintain generic RakSAMP capabilities without leaking consumer-specific behavior
-- Next action: use a gamemode task or dedicated RakSAMP project to exercise the maintenance skill
-- Scope: project guidance, recovery hook, and maintenance/release skill
-- Do not touch: product behavior or remote state without a current task boundary
+- Status: container policy implemented; awaiting native gamemode consumer gate
+- Outcome: retain six native targets while publishing one linux/amd64 manifest per container
+- Next action: consume the existing native build during NGRP and Roleplay validation; do not publish
+- Scope: release workflow and delivery documentation
+- Do not touch: product behavior, native target matrix, releases, packages, or remote tags
 
 ## State
 
-- Done: generic consumer, proportional validation, and release-authority rules are documented
-- In progress: trust and exercise the project hook when RakSAMP is primary
+- Done: generic consumer and proportional validation rules are documented
+- Done: removed arm64 container/QEMU work and `unknown/unknown` attestation manifests
+- In progress: native NGRP and Roleplay consumer validation
 - Blocked: none
-- Decisions: `dev` may publish when required; immutable versions require an explicit version
+- Decisions: containers are linux/amd64 only; native archives remain x64/arm64; no publication until
+  both gamemode native validation gates pass
 
 ## Verification
 
-- Passed: hook JSON and shell syntax, TOML parsing, skill validation, and whitespace checks
+- Passed: prior v0.9.4 native matrix and product tests
+- Passed: workflow YAML, skill validation, and whitespace checks for the x64-only policy
 - Failed: none
-- Not run: product tests; this setup does not change runtime behavior
+- Not run: publication or product tests; this workflow-only change does not alter runtime behavior
 
 ## Resume
 

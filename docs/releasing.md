@@ -44,11 +44,15 @@ The workflow also publishes:
 - `ghcr.io/sampstack/raksamp-client:<image_tag>`
 - `ghcr.io/sampstack/raksamp-server:<image_tag>`
 
-Each container tag is a `linux/amd64` and `linux/arm64` manifest. Both packages are public and can be pulled without authentication; publishing still requires the workflow's scoped GitHub token and protected environment approval.
+Each container tag has one `linux/amd64` manifest. Provenance and SBOM attestations are disabled so
+GHCR does not display a synthetic `unknown/unknown` platform. Both packages are public and can be
+pulled without authentication; publishing still requires the workflow's scoped GitHub token and
+protected environment approval.
 
-Before applying a durable version, test the native archives and pull both development images on Linux x64 and Apple Silicon:
+Before applying a durable version, test the native archives and pull both development images on
+Linux x64. Apple Silicon uses Docker's amd64 emulation only when a container test is necessary:
 
 ```bash
 docker pull --platform linux/amd64 ghcr.io/sampstack/raksamp-client:dev
-docker pull --platform linux/arm64 ghcr.io/sampstack/raksamp-server:dev
+docker pull --platform linux/amd64 ghcr.io/sampstack/raksamp-server:dev
 ```
