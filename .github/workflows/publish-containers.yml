@@ -1,19 +1,6 @@
 name: Build and publish releases
 
 on:
-  push:
-    branches: [master]
-    paths:
-      - .github/workflows/native-build.yml
-      - .github/workflows/publish-containers.yml
-      - CMakeLists.txt
-      - "**/*.cmake"
-      - client/**
-      - server/**
-      - common/**
-      - tests/**
-      - packaging/**
-      - Dockerfile
   workflow_dispatch:
     inputs:
       source_ref:
@@ -31,19 +18,30 @@ on:
         required: true
         default: true
         type: boolean
+      build_only:
+        description: Build and retain artifacts without publishing
+        required: true
+        default: false
+        type: boolean
+      artifact_run_id:
+        description: Reuse artifacts from a successful prior run; skips all native builds
+        required: false
+        default: ""
+        type: string
       native_consumers_green:
-        description: Confirm consuming gamemodes passed native validation
+        description: Confirm consuming gamemodes passed validation before an immutable release
         required: true
         default: false
         type: boolean
 
 permissions:
+  actions: read
   contents: read
   packages: write
 
 concurrency:
   group: publish-raksamp
-  cancel-in-progress: ${{ github.event_name == 'push' }}
+  cancel-in-progress: false
 
 jobs:
   validate:
@@ -55,26 +53,37 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event_name == 'push' && github.sha || inputs.source_ref }}
+          ref: ${{ inputs.source_ref }}
       - name: Pin source revision
         id: source
         env:
-          PUSH_DEV: ${{ github.event_name == 'push' || inputs.push_dev }}
+          PUSH_DEV: ${{ inputs.push_dev }}
         run: |
           echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "publish_dev=$PUSH_DEV" >> "$GITHUB_OUTPUT"
       - name: Validate release tag
         env:
           RELEASE_TAG: ${{ inputs.release_version }}
-          PUSH_DEV: ${{ github.event_name == 'push' || inputs.push_dev }}
-          CONSUMERS_GREEN: ${{ github.event_name == 'push' || inputs.native_consumers_green }}
+          PUSH_DEV: ${{ inputs.push_dev }}
+          BUILD_ONLY: ${{ inputs.build_only }}
+          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+          CONSUMERS_GREEN: ${{ inputs.native_consumers_green }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "$CONSUMERS_GREEN" != "true" ]]; then
-            echo "::error::Consuming gamemodes must pass native validation before publication."
+          if [[ -n "$ARTIFACT_RUN_ID" ]]; then
+            [[ "$ARTIFACT_RUN_ID" =~ ^[0-9]+$ ]]
+            [[ "$BUILD_ONLY" != true ]]
+            prior=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ARTIFACT_RUN_ID")
+            [[ "$(jq -r .conclusion <<<"$prior")" == success ]]
+            [[ "$(jq -r .head_sha <<<"$prior")" == "$(git rev-parse HEAD)" ]]
+            [[ "$(jq -r .path <<<"$prior")" == ".github/workflows/publish-containers.yml" ]]
+          fi
+          if [[ "$BUILD_ONLY" != true && -z "$RELEASE_TAG" && "$PUSH_DEV" != "true" ]]; then
+            echo "::error::Enable mutable dev, provide a release version, or select build-only."
             exit 1
           fi
-          if [[ -z "$RELEASE_TAG" && "$PUSH_DEV" != "true" ]]; then
-            echo "::error::Set a release version or enable Push to dev."
+          if [[ "$BUILD_ONLY" != true && -n "$RELEASE_TAG" && "$CONSUMERS_GREEN" != "true" ]]; then
+            echo "::error::Consuming gamemodes must pass native validation before publication."
             exit 1
           fi
           if [[ -n "$RELEASE_TAG" ]]; then
@@ -86,19 +95,9 @@ jobs:
               exit 1
             fi
           fi
-      - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-      - name: Build
-        run: cmake --build build --config Release --parallel
-      - name: Test
-        run: ctest --test-dir build -C Release --output-on-failure
-      - name: Validate samples
-        run: |
-          build/bin/raksamp-client --config client/bin/RakSAMPClient.xml --check-config
-          build/bin/raksamp-server --config server/bin/RakSAMPServer.xml --check-config
-
   native-build:
     needs: validate
+    if: inputs.artifact_run_id == ''
     uses: ./.github/workflows/native-build.yml
     with:
       source_ref: ${{ needs.validate.outputs.revision }}
@@ -106,6 +105,10 @@ jobs:
   ghcr-publish:
     name: Publish ${{ matrix.product }} container tags
     needs: [validate, native-build]
+    if: >-
+      always() && needs.validate.result == 'success' && !inputs.build_only &&
+      (inputs.release_version != '' || needs.validate.outputs.publish_dev == 'true') &&
+      (inputs.artifact_run_id != '' || needs.native-build.result == 'success')
     runs-on: ubuntu-24.04
     environment: ghcr-publish
     strategy:
@@ -116,6 +119,24 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ needs.validate.outputs.revision }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: native-linux-x64
+          path: native-dist
+          run-id: ${{ inputs.artifact_run_id || github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Stage prebuilt ${{ matrix.product }} image context
+        shell: bash
+        run: |
+          mkdir -p container-context
+          tar -xzf "native-dist/raksamp-${{ matrix.product }}-linux-x64.tar.gz" \
+            --strip-components=1 -C container-context
+          mv "container-context/raksamp-${{ matrix.product }}" container-context/raksamp
+          if [[ "${{ matrix.product }}" == client ]]; then
+            cp container-context/RakSAMPClient.xml container-context/default-config.xml
+          else
+            cp container-context/RakSAMPServer.xml container-context/default-config.xml
+          fi
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
@@ -136,12 +157,13 @@ jobs:
       - name: Build once and publish selected tags
         uses: docker/build-push-action@v7
         with:
-          context: .
-          target: ${{ matrix.product }}
+          context: container-context
+          file: ${{ github.workspace }}/packaging/Dockerfile.runtime.amd64
           platforms: linux/amd64
           push: true
           provenance: false
           sbom: false
+          build-args: PRODUCT=${{ matrix.product }}
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.product }}
@@ -150,9 +172,13 @@ jobs:
   release-publish:
     name: Publish native release
     needs: [validate, native-build, ghcr-publish]
+    if: >-
+      always() && needs.validate.result == 'success' && needs.ghcr-publish.result == 'success' &&
+      !inputs.build_only && (inputs.release_version != '' || needs.validate.outputs.publish_dev == 'true')
     runs-on: ubuntu-24.04
     environment: ghcr-publish
     permissions:
+      actions: read
       contents: write
     steps:
       - uses: actions/checkout@v6
@@ -164,6 +190,8 @@ jobs:
           pattern: native-*
           path: native-dist
           merge-multiple: true
+          run-id: ${{ inputs.artifact_run_id || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Publish selected releases
         env:
           GH_TOKEN: ${{ github.token }}
@@ -220,13 +248,13 @@ jobs:
               gh release edit dev \
                 --title "RakSAMP development build" \
                 --prerelease \
-                --notes "Rolling development build from \`$revision\`. Replaced by the next successful master build."
+                --notes "Rolling development build from \`$revision\`. Replaced by the next successful manual dev refresh."
             else
               gh release create dev \
                 --target "$revision" \
                 --title "RakSAMP development build" \
                 --prerelease \
-                --notes "Rolling development build from \`$revision\`. Replaced by the next successful master build."
+                --notes "Rolling development build from \`$revision\`. Replaced by the next successful manual dev refresh."
             fi
             gh release view dev --json assets --jq '.assets[].name' | while IFS= read -r asset; do
               [[ -z "$asset" ]] || gh release delete-asset dev "$asset" --yes

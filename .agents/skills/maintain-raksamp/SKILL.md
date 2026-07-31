@@ -1,6 +1,6 @@
 ---
 name: maintain-raksamp
-description: Implement, validate, and release generic RakSAMP client, server, protocol, configuration, load, or probe capabilities. Use for direct RakSAMP maintenance and when an attached gamemode reveals a fake-client emulation gap that belongs in the public tool; also use for validated master pushes, mutable dev publication, or explicitly versioned releases.
+description: Implement, validate, and release generic RakSAMP client, server, protocol, configuration, load, or probe capabilities. Use for direct RakSAMP maintenance and when an attached gamemode reveals a fake-client emulation gap that belongs in the public tool; also use for manual mutable dev publication or explicitly versioned releases.
 ---
 
 # Maintain RakSAMP
@@ -21,7 +21,8 @@ Keep RakSAMP a reusable public SA-MP/open.mp protocol tool while satisfying real
    - Gamemode-driven gap: run its narrowest consuming scenario after RakSAMP passes locally.
    - Container delivery: use `make image` only when the image boundary changed or publication is
      being accepted.
-   - Platform/delivery: require all five build-only CI jobs for the exact pushed revision.
+   - Platform/delivery: manually run `publish-containers.yml` with `build_only=true` and require all
+     five jobs for the exact pushed revision. No workflow runs on push or merge.
 4. Update `docs/AGENT-HANDOFF.md`; commit the completed slice on a branch using the established
    conventional style and merge it through a pull request.
 5. Do not publish an immutable version until consuming gamemodes pass their applicable native
@@ -29,8 +30,8 @@ Keep RakSAMP a reusable public SA-MP/open.mp protocol tool while satisfying real
 
 ## Release commands
 
-A relevant merge to `master` automatically replaces the mutable `dev` release. Use an immutable
-version only when the user supplies it and consumer validation is green:
+Run `publish-containers.yml` manually; its default refreshes mutable `dev`. Use an immutable version
+only when the user supplies it and consumer validation is green:
 
 ```bash
 gh workflow run publish-containers.yml \
@@ -40,6 +41,10 @@ gh workflow run publish-containers.yml \
   -f push_dev=false \
   -f native_consumers_green=true
 ```
+
+For a build without publication, set `build_only=true`. To publish its retained artifacts later,
+dispatch the same workflow and source ref with `artifact_run_id=<run-id>`; add the approved
+`release_version` and set `native_consumers_green=true` for an immutable release.
 
 Resolve the run with `gh run list --workflow publish-containers.yml --limit 1`, then use
 `gh run watch <run-id> --exit-status`. Protected-environment approval may still require the user.

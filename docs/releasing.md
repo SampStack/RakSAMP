@@ -1,21 +1,26 @@
 # Releasing
 
-Pull requests build and test without publishing. Every successful relevant merge to `master`
-replaces the mutable `dev` release and linux/amd64 container tags. Immutable versions are manual.
+Pull requests build and test without publishing. Pushes and merges do not run release jobs. The
+single manual workflow builds once and refreshes mutable `dev` by default; immutable versions are
+optional and explicit.
 
 For an immutable release, first accept the current `dev` assets on their supported platforms.
 
 1. Open **Actions → Build and publish releases → Run workflow**.
 2. Set `source_ref` to the reviewed branch, tag, or commit. It defaults to `master`.
-3. Enter an intentional immutable three-part version such as `0.9.5`.
-4. Keep `push_dev` enabled only when the same revision should also replace the rolling build.
-5. Confirm consuming gamemodes passed native validation.
-6. Review the validation and five native build jobs.
-7. Approve the protected `ghcr-publish` environment.
+3. Leave `push_dev` enabled to refresh the rolling build, or clear it if only an immutable release is wanted.
+4. Optionally enter an intentional immutable three-part version such as `0.9.5`.
+5. Select `build_only` to retain artifacts without publishing anything.
+6. Confirm consuming gamemodes passed native validation for an immutable release.
+7. Review the validation and five native build jobs, then approve `ghcr-publish` when publishing.
+
+To publish a successful build-only run later, repeat the dispatch with the same `source_ref` and set
+`artifact_run_id` to its run ID. Native compilation is skipped and the retained artifacts are
+published. Set the approved `release_version` and validation confirmation when making it immutable.
 
 ## Development builds
 
-`dev` is deliberately mutable. A successful relevant `master` build:
+`dev` is deliberately mutable. A successful manual publication:
 
 - moves the `dev` tag to the selected revision;
 - replaces the assets on the public `dev` GitHub prerelease;

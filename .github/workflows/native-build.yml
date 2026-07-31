@@ -7,13 +7,6 @@ on:
         description: Commit, branch, or tag to build
         required: true
         type: string
-  workflow_dispatch:
-    inputs:
-      source_ref:
-        description: Commit, branch, or tag to build
-        required: true
-        default: master
-        type: string
   pull_request:
     branches: [master]
     paths:
@@ -73,6 +66,11 @@ jobs:
         run: cmake --build build --config Release --parallel
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure
+      - name: Validate sample configurations
+        if: matrix.platform == 'linux' && matrix.arch == 'x64'
+        run: |
+          build/bin/raksamp-client --config client/bin/RakSAMPClient.xml --check-config
+          build/bin/raksamp-server --config server/bin/RakSAMPServer.xml --check-config
       - name: Stage packages
         shell: bash
         env:

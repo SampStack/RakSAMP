@@ -32,9 +32,11 @@
 
 - Follow `docs/development.md` and the `maintain-raksamp` skill. Use focused `ctest -R` first;
   reserve `make test`, image builds, and multi-platform publication for their actual boundary.
-- Platform or delivery changes require the five-target build-only workflow for the exact revision.
-- Relevant merges to `master` replace `dev`; pull requests never publish. Immutable versions require
-  an explicit three-part version and manual dispatch.
+- Platform or delivery changes use a manual `publish-containers.yml` run for the exact revision;
+  select `build_only` for retained artifacts without publication.
+- Pushes and merges never publish. The manual workflow refreshes `dev` by default; immutable
+  versions require an explicit three-part version and consumer validation. `artifact_run_id` may
+  publish retained artifacts only from a successful prior run of the same workflow and commit.
 - Native archives cover Linux x64/arm64, Windows x64, and macOS x64/arm64. GHCR client/server images are linux/amd64 only and disable
   provenance/SBOM attestations so package metadata contains no `unknown/unknown` platform.
 - After container-heavy work, inspect `docker system df`. Use the safe `docker-clean` skill only

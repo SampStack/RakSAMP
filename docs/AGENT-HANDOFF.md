@@ -7,7 +7,7 @@
 
 - Status: immutable `0.9.5` native set and both linux/amd64 images are published
 - Outcome: five native targets and one linux/amd64 manifest per container
-- Next action: confirm final immutable consumer re-pin
+- Next action: use a branch and pull request for the next change
 - Scope: release workflow and delivery documentation
 - Do not touch: product behavior or native target matrix
 
@@ -20,10 +20,11 @@
 - Done: run 30664811130 published ten archives without Windows arm64
 - Done: client/server GHCR tags each contain one linux/amd64 image manifest
 - Done: both gamemodes downloaded and ran the public macOS arm64 client from empty caches
-- Done: relevant master pushes automatically replace checksum-complete `dev`
+- Done: push publication removed; manual workflow defaults to `dev`, supports `build_only`, and can
+  publish successful same-commit artifacts through `artifact_run_id`
 - Done: immutable run 30667483205 published ten native archives and both images
 - Done: macOS packages include checksum-gated authorization helpers and ad-hoc signatures
-- In progress: final immutable consumer re-pin
+- Done: consuming gamemodes are pinned to `0.9.5` and passed final empty-cache native acceptance
 - Blocked: none
 - Decisions: containers are linux/amd64 only; native targets are Linux x64/arm64, Windows x64, and
   macOS x64/arm64; no publication until consuming gamemode validation passes
@@ -35,7 +36,7 @@
 - Failed: none
 - Passed: five native jobs, product tests, package staging, and archive upload
 - Passed: immutable manifest `5c65fe5f...`; both GHCR tags are one linux/amd64 image
-- Not run: post-release re-pin
+- Passed: post-release re-pin and focused native consumer acceptance
 
 ## Resume
 

@@ -22,7 +22,8 @@ dotnet msbuild RakSAMP.slnx -t:Test -p:Configuration=Release
 ```
 
 Native targets are Linux x64/ARM64, Windows x64, and macOS x64/ARM64. Containers intentionally
-target only Linux amd64. The `Native build` workflow validates all five targets without publishing.
+target only Linux amd64. Manually run `Build and publish releases` with `build_only` selected to
+validate and retain all five targets without publishing.
 
 ## Layout
 

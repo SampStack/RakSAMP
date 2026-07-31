@@ -7,7 +7,7 @@
 [![Architectures](https://img.shields.io/badge/arch-x64%20%7C%20ARM64-blue)](docs/development.md)
 [![Containers](https://img.shields.io/badge/GHCR-public-informational?logo=github)](docs/releasing.md)
 [![Native builds](https://img.shields.io/badge/native-downloads-public-informational?logo=github)](https://github.com/SampStack/RakSAMP/releases/tag/dev)
-[![Publish](https://img.shields.io/badge/dev-on%20master-blue?logo=githubactions)](.github/workflows/publish-containers.yml)
+[![Publish](https://img.shields.io/badge/dev-manual-blue?logo=githubactions)](.github/workflows/publish-containers.yml)
 
 RakSAMP provides two command-line tools for SA-MP development:
 
@@ -113,7 +113,8 @@ The release workflow publishes both delivery formats:
 
 Download the rolling [development release](https://github.com/SampStack/RakSAMP/releases/tag/dev),
 extract the archive for your product and platform, then run the executable beside its included XML
-configuration. Development assets are replaced by every successful relevant `master` build.
+configuration. Pushes and merges do not publish; the manual release workflow refreshes these
+development assets by default.
 
 macOS archives are ad-hoc signed. After verifying that the release and checksum are the ones you
 intend to trust, authorize only the extracted package with its checksum-gated helper:
