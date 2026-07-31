@@ -8,11 +8,16 @@ on:
         required: true
         default: master
         type: string
-      image_tag:
-        description: Release and container tag (dev is a mutable prerelease)
-        required: true
-        default: dev
+      release_version:
+        description: Optional immutable release tag (for example v0.9.4)
+        required: false
+        default: ""
         type: string
+      push_dev:
+        description: Also update the mutable dev release and container tags
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -28,10 +33,22 @@ jobs:
           ref: ${{ inputs.source_ref }}
       - name: Validate release tag
         env:
-          RELEASE_TAG: ${{ inputs.image_tag }}
+          RELEASE_TAG: ${{ inputs.release_version }}
+          PUSH_DEV: ${{ inputs.push_dev }}
         run: |
-          [[ "$RELEASE_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]
-          git check-ref-format "refs/tags/$RELEASE_TAG"
+          if [[ -z "$RELEASE_TAG" && "$PUSH_DEV" != "true" ]]; then
+            echo "::error::Set a release version or enable Push to dev."
+            exit 1
+          fi
+          if [[ -n "$RELEASE_TAG" ]]; then
+            [[ "$RELEASE_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]
+            [[ "$RELEASE_TAG" != "dev" ]]
+            git check-ref-format "refs/tags/$RELEASE_TAG"
+            if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+              echo "::error::Release tag $RELEASE_TAG already exists; versioned releases are immutable."
+              exit 1
+            fi
+          fi
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
       - name: Build
@@ -127,7 +144,7 @@ jobs:
           retention-days: 30
 
   ghcr-publish:
-    name: Publish ${{ matrix.product }} container
+    name: Publish ${{ matrix.product }} container tags
     needs: validate
     runs-on: ubuntu-24.04
     environment: ghcr-publish
@@ -150,18 +167,26 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and publish
+      - name: Resolve container metadata
+        id: metadata
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/sampstack/raksamp-${{ matrix.product }}
+          tags: |
+            type=raw,value=${{ inputs.release_version }},enable=${{ inputs.release_version != '' }}
+            type=raw,value=dev,enable=${{ inputs.push_dev }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.source.outputs.revision }}
+      - name: Build once and publish selected tags
         uses: docker/build-push-action@v7
         with:
           context: .
           target: ${{ matrix.product }}
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/sampstack/raksamp-${{ matrix.product }}:${{ inputs.image_tag }}
-          labels: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ steps.source.outputs.revision }}
-            org.opencontainers.image.version=${{ inputs.image_tag }}
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.product }}
           cache-to: type=gha,mode=max,scope=${{ matrix.product }}
 
@@ -182,30 +207,17 @@ jobs:
           pattern: native-*
           path: native-dist
           merge-multiple: true
-      - name: Resolve release
-        id: release
+      - name: Publish selected releases
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.image_tag }}
+          RELEASE_TAG: ${{ inputs.release_version }}
+          PUSH_DEV: ${{ inputs.push_dev }}
         shell: bash
         run: |
           revision=$(git rev-parse HEAD)
-          if [[ "$RELEASE_TAG" == "dev" ]]; then
-            git tag --force "$RELEASE_TAG" "$revision"
-            git push origin "refs/tags/$RELEASE_TAG" --force
-            if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-              gh release edit "$RELEASE_TAG" \
-                --title "RakSAMP development build" \
-                --prerelease \
-                --notes "Rolling development build from \`$revision\`. Replaced only by a manual workflow run."
-            else
-              gh release create "$RELEASE_TAG" \
-                --target "$revision" \
-                --title "RakSAMP development build" \
-                --prerelease \
-                --notes "Rolling development build from \`$revision\`. Replaced only by a manual workflow run."
-            fi
-          else
+          (cd native-dist && sha256sum * > SHA256SUMS)
+
+          if [[ -n "$RELEASE_TAG" ]]; then
             if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
               echo "::error::Release tag $RELEASE_TAG already exists; versioned releases are immutable."
               exit 1
@@ -216,11 +228,23 @@ jobs:
               --verify-tag \
               --title "RakSAMP $RELEASE_TAG" \
               --generate-notes
+            gh release upload "$RELEASE_TAG" native-dist/*
           fi
-      - name: Publish native archives
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.image_tag }}
-        run: |
-          (cd native-dist && sha256sum * > SHA256SUMS)
-          gh release upload "$RELEASE_TAG" native-dist/* --clobber
+
+          if [[ "$PUSH_DEV" == "true" ]]; then
+            git tag --force dev "$revision"
+            git push origin refs/tags/dev --force
+            if gh release view dev >/dev/null 2>&1; then
+              gh release edit dev \
+                --title "RakSAMP development build" \
+                --prerelease \
+                --notes "Rolling development build from \`$revision\`. Replaced only by a manual workflow run."
+            else
+              gh release create dev \
+                --target "$revision" \
+                --title "RakSAMP development build" \
+                --prerelease \
+                --notes "Rolling development build from \`$revision\`. Replaced only by a manual workflow run."
+            fi
+            gh release upload dev native-dist/* --clobber
+          fi
