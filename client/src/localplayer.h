@@ -9,6 +9,12 @@ void SendAimSyncData(DWORD dwAmmoInClip, int iReloading, PLAYERID copyFromPlayer
 void SendUnoccupiedSyncData(UNOCCUPIED_SYNC_DATA *punocSync);
 void SendSpectatorData(SPECTATOR_SYNC_DATA *pSpecData);
 void SendBulletData(BULLET_SYNC_DATA *pBulletData);
+void SendGiveTakeDamage(bool taking, PLAYERID otherPlayerId, float damage, DWORD weaponId, DWORD bodyPart);
+void HandleIncomingBulletDamage(PLAYERID attackerId, const BULLET_SYNC_DATA *bulletData);
+void ResetDamageEmulation();
+void ResetWeaponInventory();
+void SetWeaponInventoryEntry(DWORD weaponId, DWORD ammo);
+void SendWeaponInventoryUpdate();
 
 void SendEnterVehicleNotification(VEHICLEID VehicleID, BOOL bPassenger);
 void SendExitVehicleNotification(VEHICLEID VehicleID);

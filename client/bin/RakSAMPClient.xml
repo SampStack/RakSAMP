@@ -65,6 +65,10 @@ Avalable runmodes:
 		!chatflood: toggle chat flooder.
 		!classflood: toggle class selection flooder.
 		!bulletflood: flood the server with bullet sync packets to the players' positions.
+		!shoot: send one bullet hit and damage report to a streamed player.
+		!shootmiss: send one non-damaging bullet miss callback.
+		!damage: send one melee damage report to a streamed player.
+		!takedamage: emulate one local special/environment damage callback.
 		!weapon: sets the current weapon in the fake player's hand.
 		!selplayer: sets the followed player's name.
 		!selveh: sets the fake player's vehicle.

@@ -3,6 +3,7 @@
 */
 
 #include "main.h"
+#include "player_damage.h"
 
 int RunCommand(char *szCMD, int iFromAutorun)
 {
@@ -459,6 +460,195 @@ int RunCommand(char *szCMD, int iFromAutorun)
 		else if(szType[0] == 'z')
 			settings.fFollowZOffset = fValue;
 
+		return 1;
+	}
+
+	// SEND A HARMLESS BULLET MISS FOR CALLBACK TESTING
+	if(!strncmp(szCMD, "shootmiss", 9) || !strncmp(szCMD, "SHOOTMISS", 9))
+	{
+		int requestedWeapon = settings.bCurrentWeapon;
+		if(strlen(szCMD) > 10)
+			requestedWeapon = atoi(&szCMD[10]);
+
+		float damage = 0.0f;
+		if(!iSpawned || bIsSpectating)
+			Log("[SHOOTMISS] Spawn the client before shooting.");
+		else if(requestedWeapon < 0 || requestedWeapon > 255 ||
+			!raksamp::damage::IsBulletWeapon(static_cast<BYTE>(requestedWeapon)) ||
+			!raksamp::damage::TryGetWeaponDamage(
+				static_cast<BYTE>(requestedWeapon), damage))
+			Log("[SHOOTMISS] Weapon %d cannot produce a bullet shot.", requestedWeapon);
+		else if(!raksamp::damage::IsFiniteVector(settings.fCurrentPosition))
+			Log("[SHOOTMISS] Current position is invalid.");
+		else
+		{
+			BULLET_SYNC_DATA bullet = {};
+			bullet.bHitType = BULLET_HIT_TYPE_NONE;
+			bullet.iHitID = static_cast<PLAYERID>(-1);
+			memcpy(
+				bullet.fHitOrigin,
+				settings.fCurrentPosition,
+				sizeof(bullet.fHitOrigin));
+			memcpy(
+				bullet.fHitTarget,
+				settings.fCurrentPosition,
+				sizeof(bullet.fHitTarget));
+			bullet.fHitTarget[0] += 1.0f;
+			bullet.bWeaponID = static_cast<BYTE>(requestedWeapon);
+			SendBulletData(&bullet);
+			Log("[SHOOTMISS] Reported one weapon %d miss.", requestedWeapon);
+		}
+		return 1;
+	}
+
+	// SEND BULLETS TO PLAYERS' POSITION :-)
+	if(!strncmp(szCMD, "shoot", 5) || !strncmp(szCMD, "SHOOT", 5))
+	{
+		int targetId = -1;
+		int requestedWeapon = -1;
+		const int parameterCount = sscanf(&szCMD[5], "%d%d", &targetId, &requestedWeapon);
+		if(parameterCount < 1)
+		{
+			Log("USAGE: !shoot <player id> [weapon id]");
+			return 1;
+		}
+
+		const BYTE weaponId = parameterCount >= 2
+			? static_cast<BYTE>(requestedWeapon)
+			: settings.bCurrentWeapon;
+		float damage = 0.0f;
+		if(!iSpawned || bIsSpectating)
+			Log("[SHOOT] Spawn the client before shooting.");
+		else if(targetId < 0 || targetId >= MAX_PLAYERS ||
+			targetId == g_myPlayerID || !playerInfo[targetId].iIsConnected ||
+			!playerInfo[targetId].iIsStreamedIn)
+			Log("[SHOOT] Target %d is not a streamed player.", targetId);
+		else if(requestedWeapon < -1 || requestedWeapon > 255 ||
+			!raksamp::damage::IsBulletWeapon(weaponId) ||
+			!raksamp::damage::TryGetWeaponDamage(weaponId, damage))
+			Log("[SHOOT] Weapon %d cannot produce a bullet hit.", weaponId);
+		else
+		{
+			BULLET_SYNC_DATA bullet = {};
+			bullet.bHitType = BULLET_HIT_TYPE_PLAYER;
+			bullet.iHitID = static_cast<PLAYERID>(targetId);
+			memcpy(bullet.fHitOrigin, settings.fCurrentPosition, sizeof(bullet.fHitOrigin));
+			const float *targetPosition = playerInfo[targetId].iAreWeInAVehicle
+				? playerInfo[targetId].incarData.vecPos
+				: playerInfo[targetId].onfootData.vecPos;
+			memcpy(bullet.fHitTarget, targetPosition, sizeof(bullet.fHitTarget));
+			bullet.bWeaponID = weaponId;
+
+			const float weaponRange = raksamp::damage::GetWeaponRange(weaponId);
+			if(!raksamp::damage::IsFiniteVector(bullet.fHitOrigin) ||
+				!raksamp::damage::IsFiniteVector(bullet.fHitTarget) ||
+				raksamp::damage::DistanceSquared(bullet.fHitOrigin, bullet.fHitTarget) >
+					weaponRange * weaponRange)
+				Log("[SHOOT] Target %d is outside weapon %d's range.", targetId, weaponId);
+			else
+			{
+				SendBulletData(&bullet);
+				SendGiveTakeDamage(false, static_cast<PLAYERID>(targetId), damage,
+					weaponId, raksamp::damage::TorsoBodyPart);
+				Log("[SHOOT] Reported one weapon %d hit on player %d.", weaponId, targetId);
+			}
+		}
+		return 1;
+	}
+
+	// SEND A PLAYER DAMAGE REPORT WITHOUT BULLET SYNC. This can exercise
+	// melee or intentionally out-of-order firearm correlation.
+	if(!strncmp(szCMD, "damage", 6) || !strncmp(szCMD, "DAMAGE", 6))
+	{
+		int targetId = -1;
+		int requestedWeapon = -1;
+		float requestedDamage = -1.0f;
+		const int parameterCount = sscanf(
+			&szCMD[6], "%d%d%f",
+			&targetId, &requestedWeapon, &requestedDamage);
+		float canonicalDamage = 0.0f;
+		if(parameterCount < 2)
+			Log("USAGE: !damage <player id> <weapon id> [reported amount]");
+		else if(!iSpawned || bIsSpectating)
+			Log("[DAMAGE] Spawn the client before reporting damage.");
+		else if(targetId < 0 || targetId >= MAX_PLAYERS ||
+			targetId == g_myPlayerID || !playerInfo[targetId].iIsConnected ||
+			!playerInfo[targetId].iIsStreamedIn)
+			Log("[DAMAGE] Target %d is not a streamed player.", targetId);
+		else if(requestedWeapon < 0 || requestedWeapon > 255 ||
+			!raksamp::damage::IsGivenDamageWeapon(
+				static_cast<std::uint32_t>(requestedWeapon)) ||
+			!raksamp::damage::TryGetWeaponDamage(
+				static_cast<std::uint32_t>(requestedWeapon),
+				canonicalDamage))
+			Log("[DAMAGE] Weapon %d cannot produce player damage.", requestedWeapon);
+		else
+		{
+			const float amount = parameterCount >= 3
+				? requestedDamage
+				: canonicalDamage;
+			if(!std::isfinite(amount) || amount <= 0.0f)
+				Log("[DAMAGE] Reported damage must be finite and positive.");
+			else
+			{
+				SendGiveTakeDamage(
+					false,
+					static_cast<PLAYERID>(targetId),
+					amount,
+					static_cast<DWORD>(requestedWeapon),
+					raksamp::damage::TorsoBodyPart);
+				Log("[DAMAGE] Reported weapon %d damage on player %d without bullet sync.",
+					requestedWeapon, targetId);
+			}
+		}
+		return 1;
+	}
+
+	// EMULATE A LOCAL SPECIAL OR ENVIRONMENT DAMAGE CALLBACK.
+	if(!strncmp(szCMD, "takedamage", 10) || !strncmp(szCMD, "TAKEDAMAGE", 10))
+	{
+		int issuerId = -1;
+		int requestedWeapon = -1;
+		float requestedDamage = 100.0f;
+		const int parameterCount = sscanf(
+			&szCMD[10], "%d%d%f",
+			&issuerId, &requestedWeapon, &requestedDamage);
+		const bool hasIssuer = issuerId >= 0;
+		float canonicalDamage = 0.0f;
+		if(parameterCount < 2)
+			Log("USAGE: !takedamage <issuer id|-1> <weapon id> [reported amount]");
+		else if(!iSpawned || bIsSpectating)
+			Log("[TAKEDAMAGE] Spawn the client before taking damage.");
+		else if((hasIssuer &&
+				(issuerId >= MAX_PLAYERS || issuerId == g_myPlayerID)) ||
+			issuerId < -1)
+			Log("[TAKEDAMAGE] Issuer %d is invalid; use -1 for environment.", issuerId);
+		else if(requestedWeapon < 0 || requestedWeapon > 255 ||
+			!raksamp::damage::TryNormalizeTakenDamage(
+				static_cast<std::uint32_t>(requestedWeapon),
+				requestedDamage,
+				hasIssuer,
+				canonicalDamage))
+			Log("[TAKEDAMAGE] Weapon %d is not valid for that issuer route.", requestedWeapon);
+		else
+		{
+			const PLAYERID issuer = hasIssuer
+				? static_cast<PLAYERID>(issuerId)
+				: static_cast<PLAYERID>(-1);
+			const auto updated = raksamp::damage::ApplyArmourFirst(
+				{ settings.fPlayerHealth, settings.fPlayerArmour },
+				canonicalDamage);
+			settings.fPlayerHealth = updated.health;
+			settings.fPlayerArmour = updated.armour;
+			SendGiveTakeDamage(
+				true,
+				issuer,
+				requestedDamage,
+				static_cast<DWORD>(requestedWeapon),
+				raksamp::damage::TorsoBodyPart);
+			Log("[TAKEDAMAGE] Reported weapon %d damage from issuer %d.",
+				requestedWeapon, issuerId);
+		}
 		return 1;
 	}
 

@@ -989,6 +989,36 @@ void ScrResetMoney(RPCParameters *rpcParams)
 	iMoney = 0;
 }
 
+void ScrResetPlayerWeapons(RPCParameters *rpcParams)
+{
+	(void)rpcParams;
+	ResetWeaponInventory();
+}
+
+void ScrGivePlayerWeapon(RPCParameters *rpcParams)
+{
+	RakNet::BitStream bsData(
+		reinterpret_cast<unsigned char *>(rpcParams->input),
+		(rpcParams->numberOfBitsOfData / 8) + 1,
+		false);
+	DWORD weaponId = 0;
+	DWORD ammo = 0;
+	if(bsData.Read(weaponId) && bsData.Read(ammo))
+		SetWeaponInventoryEntry(weaponId, ammo);
+}
+
+void ScrSetWeaponAmmo(RPCParameters *rpcParams)
+{
+	RakNet::BitStream bsData(
+		reinterpret_cast<unsigned char *>(rpcParams->input),
+		(rpcParams->numberOfBitsOfData / 8) + 1,
+		false);
+	BYTE weaponId = 0;
+	WORD ammo = 0;
+	if(bsData.Read(weaponId) && bsData.Read(ammo))
+		SetWeaponInventoryEntry(weaponId, ammo);
+}
+
 void ScrSetPlayerPos(RPCParameters *rpcParams)
 {
 	PCHAR Data = reinterpret_cast<PCHAR>(rpcParams->input);
@@ -1316,6 +1346,9 @@ void RegisterRPCs(RakClientInterface *pRakClient)
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrRemovePlayerFromVehicle, ScrRemovePlayerFromVehicle);
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrSetSpawnInfo, ScrSetSpawnInfo);
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrSetPlayerHealth, ScrSetPlayerHealth);
+		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrResetPlayerWeapons, ScrResetPlayerWeapons);
+		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrGivePlayerWeapon, ScrGivePlayerWeapon);
+		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrSetWeaponAmmo, ScrSetWeaponAmmo);
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrSetPlayerArmour, ScrSetPlayerArmour);
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrSetPlayerSkin, ScrSetPlayerSkin);
 		pRakClient->RegisterAsRemoteProcedureCall(&RPC_ScrCreateObject, ScrCreateObject);
@@ -1369,6 +1402,9 @@ void UnRegisterRPCs(RakClientInterface * pRakClient)
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrRemovePlayerFromVehicle);
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrSetSpawnInfo);
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrSetPlayerHealth);
+		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrResetPlayerWeapons);
+		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrGivePlayerWeapon);
+		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrSetWeaponAmmo);
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrSetPlayerArmour);
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrSetPlayerSkin);
 		pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrCreateObject);

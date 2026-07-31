@@ -53,6 +53,7 @@ extern int RPC_StopAudioStream;
 extern int RPC_ClickPlayer;
 extern int RPC_ClickTextDraw;
 extern int RPC_MapMarker;
+extern int RPC_PlayerGiveTakeDamage;
 
 extern int RPC_ScrSetSpawnInfo;
 extern int RPC_ScrSetPlayerTeam;

@@ -472,6 +472,7 @@ void Packet_BulletSync(Packet *p, RakClientInterface *pRakClient)
 		memset(&playerInfo[PlayerID].bulletData, 0, sizeof(BULLET_SYNC_DATA));
 
 		bsBulletSync.Read((PCHAR)&playerInfo[PlayerID].bulletData, sizeof(BULLET_SYNC_DATA));
+		HandleIncomingBulletDamage(PlayerID, &playerInfo[PlayerID].bulletData);
 
 		PLAYERID copyingID = getPlayerIDFromPlayerName(settings.szFollowingPlayerName);
 
@@ -487,6 +488,7 @@ void resetPools(int iRestart, DWORD dwTimeReconnect)
 {
 	memset(playerInfo, 0, sizeof(stPlayerInfo));
 	memset(vehiclePool, 0, sizeof(stVehiclePool));
+	ResetDamageEmulation();
 
 	if(iRestart)
 	{

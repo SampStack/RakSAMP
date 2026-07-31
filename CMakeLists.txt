@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(RakSAMP
-    VERSION 0.9.2
+    VERSION 0.9.3
     DESCRIPTION "Cross-platform SA-MP 0.3.7 and 0.3DL fake client and development server"
     LANGUAGES C CXX)
 
@@ -35,6 +35,12 @@ if(BUILD_TESTING)
         client/src/load_mode_options.cpp)
     target_include_directories(load-mode-options-tests PRIVATE client/src)
     add_test(NAME load-mode-options COMMAND load-mode-options-tests)
+
+    add_executable(player-damage-tests
+        tests/player_damage_tests.cpp
+        client/src/player_damage.cpp)
+    target_include_directories(player-damage-tests PRIVATE client/src)
+    add_test(NAME player-damage COMMAND player-damage-tests)
 endif()
 
 set(RAKSAMP_RAKNET_SOURCES
@@ -124,6 +130,7 @@ if(RAKSAMP_BUILD_CLIENT)
         client/src/native_driver.cpp
         client/src/netgame.cpp
         client/src/netrpc.cpp
+        client/src/player_damage.cpp
         client/src/xmlsets.cpp)
     target_include_directories(raksamp-client PRIVATE client/src)
     target_compile_definitions(raksamp-client PRIVATE RAKSAMP_CLIENT POSIX_HEADLESS)

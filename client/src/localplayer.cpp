@@ -3,6 +3,10 @@
 */
 
 #include "main.h"
+#include "player_damage.h"
+
+#include <algorithm>
+#include <cmath>
 
 DWORD dwLastOnFootDataSentTick = GetTickCount();
 int iFollowingPassenger = 0, iFollowingDriver = 0;
@@ -288,6 +292,143 @@ void SendBulletData(BULLET_SYNC_DATA *pBulletData)
 	bsBulletSync.Write((PCHAR)pBulletData, sizeof(BULLET_SYNC_DATA));
 
 	pRakClient->Send(&bsBulletSync,HIGH_PRIORITY,UNRELIABLE_SEQUENCED,0);
+}
+
+void SendGiveTakeDamage(bool taking, PLAYERID otherPlayerId, float damage, DWORD weaponId, DWORD bodyPart)
+{
+	if(!std::isfinite(damage) || damage <= 0.0f)
+		return;
+
+	RakNet::BitStream bsDamage;
+	bsDamage.Write(taking);
+	bsDamage.Write(otherPlayerId);
+	bsDamage.Write(damage);
+	bsDamage.Write(weaponId);
+	bsDamage.Write(bodyPart);
+	pRakClient->RPC(&RPC_PlayerGiveTakeDamage, &bsDamage, HIGH_PRIORITY,
+		RELIABLE_ORDERED, 0, FALSE, UNASSIGNED_NETWORK_ID, NULL);
+}
+
+namespace
+{
+	DWORD lastIncomingDamageTick[MAX_PLAYERS] = {};
+	struct WeaponInventoryEntry
+	{
+		BYTE weaponId;
+		WORD ammo;
+	};
+	WeaponInventoryEntry weaponInventory[13] = {};
+}
+
+void ResetDamageEmulation()
+{
+	memset(lastIncomingDamageTick, 0, sizeof(lastIncomingDamageTick));
+}
+
+void ResetWeaponInventory()
+{
+	memset(weaponInventory, 0, sizeof(weaponInventory));
+	settings.bCurrentWeapon = 0;
+	SendWeaponInventoryUpdate();
+}
+
+void SetWeaponInventoryEntry(DWORD weaponId, DWORD ammo)
+{
+	const int slot = raksamp::damage::GetWeaponSlot(weaponId);
+	if(slot < 0 || slot >= static_cast<int>(sizeof(weaponInventory) /
+		sizeof(weaponInventory[0])))
+		return;
+
+	weaponInventory[slot].weaponId = static_cast<BYTE>(weaponId);
+	weaponInventory[slot].ammo = static_cast<WORD>(
+		std::min<DWORD>(ammo, 0xFFFFu));
+	SendWeaponInventoryUpdate();
+}
+
+void SendWeaponInventoryUpdate()
+{
+	if(!pRakClient || !iAreWeConnected)
+		return;
+
+	RakNet::BitStream bsWeapons;
+	bsWeapons.Write(static_cast<BYTE>(ID_WEAPONS_UPDATE));
+	bsWeapons.Write(static_cast<PLAYERID>(-1));
+	bsWeapons.Write(static_cast<PLAYERID>(-1));
+	for(std::size_t slot = 0;
+		slot < sizeof(weaponInventory) / sizeof(weaponInventory[0]);
+		++slot)
+	{
+		const auto &entry = weaponInventory[slot];
+		if(entry.weaponId == 0 || entry.ammo == 0)
+			continue;
+
+		bsWeapons.Write(static_cast<BYTE>(slot));
+		bsWeapons.Write(entry.weaponId);
+		bsWeapons.Write(entry.ammo);
+	}
+	pRakClient->Send(
+		&bsWeapons,
+		HIGH_PRIORITY,
+		UNRELIABLE_SEQUENCED,
+		0);
+}
+
+void HandleIncomingBulletDamage(PLAYERID attackerId, const BULLET_SYNC_DATA *bulletData)
+{
+	if(bulletData == nullptr || !iSpawned || bIsSpectating ||
+		settings.fPlayerHealth <= 0.0f ||
+		attackerId >= MAX_PLAYERS || attackerId == g_myPlayerID ||
+		!playerInfo[attackerId].iIsConnected ||
+		bulletData->bHitType != BULLET_HIT_TYPE_PLAYER ||
+		bulletData->iHitID != g_myPlayerID)
+		return;
+
+	float damage = 0.0f;
+	if(!raksamp::damage::IsBulletWeapon(bulletData->bWeaponID) ||
+		!raksamp::damage::TryGetWeaponDamage(bulletData->bWeaponID, damage) ||
+		!raksamp::damage::IsFiniteVector(bulletData->fHitOrigin) ||
+		!raksamp::damage::IsFiniteVector(bulletData->fHitTarget) ||
+		!raksamp::damage::IsFiniteVector(settings.fCurrentPosition))
+		return;
+
+	const ONFOOT_SYNC_DATA &attacker = playerInfo[attackerId].onfootData;
+	const float *attackerPosition = attacker.vecPos;
+	BYTE syncedWeapon = attacker.byteCurrentWeapon;
+	if(playerInfo[attackerId].iAreWeInAVehicle)
+	{
+		attackerPosition = playerInfo[attackerId].incarData.vecPos;
+		syncedWeapon = playerInfo[attackerId].incarData.byteCurrentWeapon;
+	}
+
+	if(!raksamp::damage::IsFiniteVector(attackerPosition) ||
+		(syncedWeapon != 0 && syncedWeapon != bulletData->bWeaponID))
+		return;
+
+	constexpr float OriginTolerance = 15.0f;
+	constexpr float TargetTolerance = 8.0f;
+	const float weaponRange = raksamp::damage::GetWeaponRange(bulletData->bWeaponID);
+	if(raksamp::damage::DistanceSquared(attackerPosition, bulletData->fHitOrigin) >
+			OriginTolerance * OriginTolerance ||
+		raksamp::damage::DistanceSquared(settings.fCurrentPosition, bulletData->fHitTarget) >
+			TargetTolerance * TargetTolerance ||
+		raksamp::damage::DistanceSquared(bulletData->fHitOrigin, bulletData->fHitTarget) >
+			weaponRange * weaponRange)
+		return;
+
+	const DWORD now = GetTickCount();
+	const DWORD minimumInterval =
+		raksamp::damage::GetMinimumHitIntervalMs(bulletData->bWeaponID);
+	if(lastIncomingDamageTick[attackerId] != 0 &&
+		now - lastIncomingDamageTick[attackerId] < minimumInterval)
+		return;
+	lastIncomingDamageTick[attackerId] = now;
+
+	const auto updated = raksamp::damage::ApplyArmourFirst(
+		{ settings.fPlayerHealth, settings.fPlayerArmour }, damage);
+	settings.fPlayerHealth = updated.health;
+	settings.fPlayerArmour = updated.armour;
+	SendGiveTakeDamage(true, attackerId, damage, bulletData->bWeaponID,
+		raksamp::damage::TorsoBodyPart);
 }
 
 void SendEnterVehicleNotification(VEHICLEID VehicleID, BOOL bPassenger)
