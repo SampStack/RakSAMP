@@ -5,9 +5,9 @@
 
 ## Active slice
 
-- Status: applying the five-target support boundary before a fresh GitHub build
+- Status: exact-head five-target build is green; awaiting gamemode consumer validation
 - Outcome: five native targets and one linux/amd64 manifest per container
-- Next action: push and require the exact-head five-target workflow to pass; do not publish
+- Next action: continue gamemode consumer validation; do not publish
 - Scope: release workflow and delivery documentation
 - Do not touch: product behavior, native target matrix, releases, packages, or remote tags
 
@@ -15,7 +15,8 @@
 
 - Done: generic consumer and proportional validation rules are documented
 - Done: removed arm64 container/QEMU work and `unknown/unknown` attestation manifests
-- In progress: fresh five-target build and native gamemode consumer validation
+- Done: exact-head five-target run 30661085491 passed at `2502706`
+- In progress: native gamemode consumer validation
 - Blocked: none
 - Decisions: containers are linux/amd64 only; native targets are Linux x64/arm64, Windows x64, and
   macOS x64/arm64; no publication until consuming gamemode validation passes
@@ -25,7 +26,8 @@
 - Passed: prior v0.9.4 native matrix and product tests
 - Passed: workflow YAML, skill validation, and whitespace checks for the x64-only policy
 - Failed: none
-- Not run: fresh five-target workflow or publication; this workflow-only change does not alter runtime behavior
+- Passed: five native jobs, product tests, package staging, and archive upload
+- Not run: publication or gamemode runtime
 
 ## Resume
 
