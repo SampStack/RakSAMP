@@ -65,6 +65,9 @@ int main()
 	const float origin[3] = { 0.0f, 0.0f, 0.0f };
 	const float target[3] = { 3.0f, 4.0f, 0.0f };
 	assert(Near(raksamp::damage::DistanceSquared(origin, target), 25.0f));
+	assert(raksamp::damage::IsFiniteScalar(1.0f));
+	assert(!raksamp::damage::IsFiniteScalar(
+		std::numeric_limits<float>::quiet_NaN()));
 	assert(raksamp::damage::IsFiniteVector(target));
 
 	return 0;

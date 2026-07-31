@@ -587,7 +587,7 @@ int RunCommand(char *szCMD, int iFromAutorun)
 			const float amount = parameterCount >= 3
 				? requestedDamage
 				: canonicalDamage;
-			if(!std::isfinite(amount) || amount <= 0.0f)
+			if(!raksamp::damage::IsFiniteScalar(amount) || amount <= 0.0f)
 				Log("[DAMAGE] Reported damage must be finite and positive.");
 			else
 			{

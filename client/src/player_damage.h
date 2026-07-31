@@ -25,6 +25,7 @@ namespace raksamp::damage
 	float GetWeaponRange(std::uint32_t weaponId);
 	int GetWeaponSlot(std::uint32_t weaponId);
 	std::uint32_t GetMinimumHitIntervalMs(std::uint32_t weaponId);
+	bool IsFiniteScalar(float value);
 	bool IsFiniteVector(const float value[3]);
 	float DistanceSquared(const float lhs[3], const float rhs[3]);
 	Vitals ApplyArmourFirst(Vitals current, float damage);

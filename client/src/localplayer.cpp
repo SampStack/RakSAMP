@@ -296,7 +296,7 @@ void SendBulletData(BULLET_SYNC_DATA *pBulletData)
 
 void SendGiveTakeDamage(bool taking, PLAYERID otherPlayerId, float damage, DWORD weaponId, DWORD bodyPart)
 {
-	if(!std::isfinite(damage) || damage <= 0.0f)
+	if(!raksamp::damage::IsFiniteScalar(damage) || damage <= 0.0f)
 		return;
 
 	RakNet::BitStream bsDamage;

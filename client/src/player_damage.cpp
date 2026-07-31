@@ -138,6 +138,11 @@ namespace raksamp::damage
 		}
 	}
 
+	bool IsFiniteScalar(float value)
+	{
+		return std::isfinite(value);
+	}
+
 	bool IsFiniteVector(const float value[3])
 	{
 		return value != nullptr &&
