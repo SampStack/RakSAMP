@@ -22,31 +22,23 @@ Keep RakSAMP a reusable public SA-MP/open.mp protocol tool while satisfying real
    - Container delivery: use `make image` only when the image boundary changed or publication is
      being accepted.
    - Platform/delivery: require all five build-only CI jobs for the exact pushed revision.
-4. Update `docs/AGENT-HANDOFF.md`; commit the completed slice on `master` using the established
-   conventional style.
-5. Push `master` after validation. Do not publish until consuming gamemodes pass their applicable
-   native consumer validation; then watch the requested workflow and verify its artifacts.
+4. Update `docs/AGENT-HANDOFF.md`; commit the completed slice on a branch using the established
+   conventional style and merge it through a pull request.
+5. Do not publish an immutable version until consuming gamemodes pass their applicable native
+   validation; then watch the requested workflow and verify its artifacts.
 
 ## Release commands
 
-Publish the mutable development release from reviewed `master`:
+A relevant merge to `master` automatically replaces the mutable `dev` release. Use an immutable
+version only when the user supplies it and consumer validation is green:
 
 ```bash
 gh workflow run publish-containers.yml \
   --ref master \
   -f source_ref=master \
-  -f release_version= \
-  -f push_dev=true
-```
-
-Use an immutable version only when the user supplies it:
-
-```bash
-gh workflow run publish-containers.yml \
-  --ref master \
-  -f source_ref=master \
-  -f release_version=vX.Y.Z \
-  -f push_dev=true
+  -f release_version=X.Y.Z \
+  -f push_dev=false \
+  -f native_consumers_green=true
 ```
 
 Resolve the run with `gh run list --workflow publish-containers.yml --limit 1`, then use

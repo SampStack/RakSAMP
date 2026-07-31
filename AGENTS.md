@@ -16,8 +16,8 @@
 2. Trace only the consumer failure and the owning client, server, common, configuration, or test code.
 3. Implement the root capability with fixed-width, protocol-correct wire behavior and bounded input.
 4. Run the smallest focused native test, then the consuming gamemode scenario when applicable.
-5. Report passed, failed, and not-run checks separately. Commit a completed slice on `master` using
-   the established conventional style; verify `HEAD == origin/master` after pushing.
+5. Report passed, failed, and not-run checks separately. Use a branch and pull request for future
+   work; verify the merged revision on `origin/master`.
 
 ## Consumer repositories
 
@@ -33,8 +33,7 @@
 - Follow `docs/development.md` and the `maintain-raksamp` skill. Use focused `ctest -R` first;
   reserve `make test`, image builds, and multi-platform publication for their actual boundary.
 - Platform or delivery changes require the five-target build-only workflow for the exact revision.
-- A current validated task may push `master`. After the initial consuming-gamemode native gate,
-  relevant `master` pushes replace `dev`; pull requests never publish. Immutable versions require
+- Relevant merges to `master` replace `dev`; pull requests never publish. Immutable versions require
   an explicit three-part version and manual dispatch.
 - Native archives cover Linux x64/arm64, Windows x64, and macOS x64/arm64. GHCR client/server images are linux/amd64 only and disable
   provenance/SBOM attestations so package metadata contains no `unknown/unknown` platform.
