@@ -155,7 +155,8 @@ Normal input is sent as chat; input beginning with `/` is sent as a server comma
 `!shoot <player> [weapon]` emits correlated bullet sync and damage RPCs.
 `!shootmiss [weapon]` emits a non-damaging bullet miss for callback testing.
 `!damage <player> <weapon> [amount]` emits a player damage RPC without
-bullet sync, covering melee and deliberate damage-before-shot ordering tests.
+bullet sync, including for connected out-of-stream targets, covering melee
+and deliberate damage-before-shot ordering tests.
 `!takedamage <issuer|-1> <cause> [amount]` emulates special or environmental
 damage received by the headless client. The last command is explicit because
 RakSAMP has no GTA physics engine to independently simulate explosions,

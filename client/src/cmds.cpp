@@ -572,9 +572,8 @@ int RunCommand(char *szCMD, int iFromAutorun)
 		else if(!iSpawned || bIsSpectating)
 			Log("[DAMAGE] Spawn the client before reporting damage.");
 		else if(targetId < 0 || targetId >= MAX_PLAYERS ||
-			targetId == g_myPlayerID || !playerInfo[targetId].iIsConnected ||
-			!playerInfo[targetId].iIsStreamedIn)
-			Log("[DAMAGE] Target %d is not a streamed player.", targetId);
+			targetId == g_myPlayerID || !playerInfo[targetId].iIsConnected)
+			Log("[DAMAGE] Target %d is not a connected player.", targetId);
 		else if(requestedWeapon < 0 || requestedWeapon > 255 ||
 			!raksamp::damage::IsGivenDamageWeapon(
 				static_cast<std::uint32_t>(requestedWeapon)) ||
