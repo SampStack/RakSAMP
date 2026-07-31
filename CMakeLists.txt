@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(RakSAMP
-    VERSION 0.9.1
+    VERSION 0.9.2
     DESCRIPTION "Cross-platform SA-MP 0.3.7 and 0.3DL fake client and development server"
     LANGUAGES C CXX)
 
@@ -29,6 +29,12 @@ if(BUILD_TESTING)
     add_executable(client-lifecycle-tests tests/client_lifecycle_tests.cpp)
     target_include_directories(client-lifecycle-tests PRIVATE client/src)
     add_test(NAME client-lifecycle COMMAND client-lifecycle-tests)
+
+    add_executable(load-mode-options-tests
+        tests/load_mode_options_tests.cpp
+        client/src/load_mode_options.cpp)
+    target_include_directories(load-mode-options-tests PRIVATE client/src)
+    add_test(NAME load-mode-options COMMAND load-mode-options-tests)
 endif()
 
 set(RAKSAMP_RAKNET_SOURCES
@@ -110,6 +116,8 @@ if(RAKSAMP_BUILD_CLIENT)
     add_executable(raksamp-client
         client/src/cmds.cpp
         client/src/localplayer.cpp
+        client/src/load_mode.cpp
+        client/src/load_mode_options.cpp
         client/src/main.cpp
         client/src/math_stuff.cpp
         client/src/misc_funcs.cpp

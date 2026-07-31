@@ -4,6 +4,7 @@
 
 #include "main.h"
 #include "client_lifecycle.h"
+#include "load_mode.h"
 
 RakClientInterface *pRakClient = NULL;
 int iAreWeConnected = 0, iConnectionRequested = 0, iSpawned = 0, iGameInited = 0, iSpawnsAvailable = 0;
@@ -376,11 +377,21 @@ static void PrintClientUsage()
 {
 	printf("Usage: raksamp-client [--config PATH] [--protocol 0.3.7|0.3DL]\n");
 	printf("                      [--check-config] [--help] [--version]\n");
+	printf("       raksamp-client [--config PATH] [--protocol 0.3.7|0.3DL]\n");
+	printf("                      --load-clients N --load-password PASSWORD\n");
+	printf("                      [--load-duration SECONDS] [--load-connect-rate N]\n");
+	printf("                      [--load-sync-rate N] [--load-ready-timeout SECONDS]\n");
+	printf("                      [--load-anticheat-probe-clients N]\n");
+	printf("                      [--load-index-offset N] [--load-start-file PATH]\n");
+	printf("                      [--load-account-prefix PREFIX]\n");
+	printf("                      [--load-character-first FIRST]\n");
+	printf("Environment: RAKSAMP_LOAD_PASSWORD may replace --load-password.\n");
 }
 
 int main(int argc, char **argv)
 {
 	bool checkConfig = false;
+	LoadModeOptions loadOptions;
 	for(int i = 1; i < argc; ++i)
 	{
 		if(!strcmp(argv[i], "--help"))
@@ -415,12 +426,27 @@ int main(int argc, char **argv)
 		}
 		else
 		{
+			std::string error;
+			const LoadOptionParseResult result = ParseLoadModeOption(
+				argc, argv, i, loadOptions, error);
+			if(result == LoadOptionParseResult::Matched)
+				continue;
+			if(result == LoadOptionParseResult::Error)
+			{
+				fprintf(stderr, "%s\n", error.c_str());
+				return 2;
+			}
 			fprintf(stderr, "unknown option: %s\n", argv[i]);
 			PrintClientUsage();
 			return 2;
 		}
 	}
 
+	if(checkConfig && loadOptions.requested)
+	{
+		fprintf(stderr, "--check-config cannot be combined with load mode\n");
+		return 2;
+	}
 	if(checkConfig)
 	{
 		if(!LoadSettings())
@@ -429,6 +455,26 @@ int main(int argc, char **argv)
 			SampProtocolName(settings.protocol), settings.iNetworkVersion);
 		UnLoadSettings();
 		return 0;
+	}
+	if(loadOptions.requested)
+	{
+		if(loadOptions.password.empty())
+		{
+			const char *environmentPassword = getenv("RAKSAMP_LOAD_PASSWORD");
+			if(environmentPassword != NULL)
+				loadOptions.password = environmentPassword;
+		}
+		std::string error;
+		if(!ValidateLoadModeOptions(loadOptions, error))
+		{
+			fprintf(stderr, "%s\n", error.c_str());
+			return 2;
+		}
+		if(!LoadSettings())
+			return 1;
+		const int result = RunLoadMode(loadOptions);
+		UnLoadSettings();
+		return result;
 	}
 	return WinMain(NULL, NULL, NULL, 0);
 }

@@ -46,6 +46,29 @@ Set the server, nickname, and password in `RakSAMPClient.xml`. Override the conf
 ./build/bin/raksamp-client --config RakSAMPClient.xml --protocol 0.3.7
 ```
 
+Run one isolated lightweight client worker for a controlled load test:
+
+```bash
+RAKSAMP_LOAD_PASSWORD='testpassword' \
+  ./build/bin/raksamp-client --config RakSAMPClient.xml \
+  --load-clients 1 --load-duration 30 --load-connect-rate 5 \
+  --load-account-prefix loadtest --load-character-first Load
+```
+
+Load mode expects those numbered accounts and matching characters to exist. It
+ramps connections, completes login and textdraw character selection, sends
+normal sync, and exits nonzero if any client fails or disconnects. Use it only
+against servers you own or are authorized to test.
+
+The mode deliberately runs one client per process because the legacy RakNet
+implementation does not fully isolate peer state at higher in-process
+concurrency. Harnesses coordinate workers with unique
+`--load-index-offset` values and a shared `--load-start-file`, up to 100 clients
+in total. An optional
+`--load-anticheat-probe-clients N` flag makes the first N clients report
+impossible movement, boosted vitals, and an unauthorized weapon during the
+soak so an authorized server harness can verify its correction paths.
+
 Public container:
 
 ```bash
@@ -98,6 +121,7 @@ xattr -dr com.apple.quarantine raksamp-client
 | SA-MP 0.3DL / network 4062 | ✅ | ✅ |
 | Mixed 0.3.7 and 0.3DL sessions | N/A | ✅ |
 | Headless stdin automation | ✅ | N/A |
+| Process-isolated load worker | ✅ | N/A |
 | Lua 5.4.8 scripting | N/A | ✅ |
 | Custom-model metadata handshake | ✅ | N/A |
 | DFF/TXD asset storage or hosting | ❌ | ❌ |
