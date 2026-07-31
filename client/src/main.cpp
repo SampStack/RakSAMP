@@ -385,6 +385,7 @@ static void PrintClientUsage()
 	printf("                      [--load-index-offset N] [--load-start-file PATH]\n");
 	printf("                      [--load-account-prefix PREFIX]\n");
 	printf("                      [--load-character-first FIRST]\n");
+	printf("                      [--load-direct-character]\n");
 	printf("Environment: RAKSAMP_LOAD_PASSWORD may replace --load-password.\n");
 }
 

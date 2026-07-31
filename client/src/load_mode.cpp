@@ -53,6 +53,7 @@ struct LoadSession
 	LoadSessionState state = LoadSessionState::Pending;
 	std::string failure;
 	bool loginSubmitted = false;
+	bool directCharacter = false;
 	bool characterSelected = false;
 	bool spawnSent = false;
 	bool spectating = false;
@@ -446,7 +447,7 @@ bool StartSession(LoadSession &session)
 {
 	DestroyClient(session);
 	session.loginSubmitted = false;
-	session.characterSelected = false;
+	session.characterSelected = session.directCharacter;
 	session.spawnSent = false;
 	session.spectating = false;
 	session.failure.clear();
@@ -711,6 +712,7 @@ int RunLoadMode(const LoadModeOptions &options)
 		session->index = static_cast<std::size_t>(index);
 		session->accountName = MakeLoadAccountName(options, session->index);
 		session->characterName = MakeLoadCharacterName(options, session->index);
+		session->directCharacter = options.directCharacter;
 		session->password = options.password;
 		sessions.push_back(std::move(session));
 	}

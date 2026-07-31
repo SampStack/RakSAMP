@@ -13,6 +13,7 @@ struct LoadModeOptions
 	int readyTimeoutSeconds = 180;
 	int antiCheatProbeClients = 0;
 	int indexOffset = 0;
+	bool directCharacter = false;
 	std::string accountPrefix = "loadtest";
 	std::string characterFirstName = "Load";
 	std::string password;

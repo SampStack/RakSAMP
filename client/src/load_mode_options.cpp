@@ -70,6 +70,12 @@ LoadOptionParseResult ParseLoadModeOption(
 	std::string &error)
 {
 	const std::string option = argv[index];
+	if(option == "--load-direct-character")
+	{
+		options.requested = true;
+		options.directCharacter = true;
+		return LoadOptionParseResult::Matched;
+	}
 	const bool takesValue =
 		option == "--load-clients" ||
 		option == "--load-duration" ||
@@ -175,6 +181,9 @@ std::string MakeLoadAccountName(
 	const LoadModeOptions &options,
 	std::size_t zeroBasedIndex)
 {
+	if(options.directCharacter)
+		return MakeLoadCharacterName(options, zeroBasedIndex);
+
 	const std::size_t effectiveIndex =
 		zeroBasedIndex + static_cast<std::size_t>(options.indexOffset);
 	const std::size_t largest = options.clientCount > 0

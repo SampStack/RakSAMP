@@ -40,7 +40,8 @@ RAKSAMP_LOAD_PASSWORD='testpassword' raksamp-client \
   --load-ready-timeout 180 \
   --load-anticheat-probe-clients 0 \
   --load-account-prefix loadtest \
-  --load-character-first Load
+  --load-character-first Load \
+  --load-direct-character
 ```
 
 The generated accounts and characters must already exist. `--load-clients`
@@ -56,6 +57,9 @@ When `--load-anticheat-probe-clients` is nonzero, the first N clients emit
 impossible velocity, boosted health and armour, and an unauthorized weapon
 only after every client is active. This is an opt-in integrity probe for
 servers you own; the server-side harness must verify the expected corrections.
+`--load-direct-character` supports servers whose roleplay nickname is also the
+account identity: it logs in with the generated character name and considers
+character selection complete before the server exits spectator mode.
 
 Do not place stress commands in `<autorun>` unless a controlled test explicitly requires them.
 

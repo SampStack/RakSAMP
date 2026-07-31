@@ -52,13 +52,18 @@ Run one isolated lightweight client worker for a controlled load test:
 RAKSAMP_LOAD_PASSWORD='testpassword' \
   ./build/bin/raksamp-client --config RakSAMPClient.xml \
   --load-clients 1 --load-duration 30 --load-connect-rate 5 \
-  --load-account-prefix loadtest --load-character-first Load
+  --load-account-prefix loadtest --load-character-first Load \
+  --load-direct-character
 ```
 
 Load mode expects those numbered accounts and matching characters to exist. It
 ramps connections, completes login and textdraw character selection, sends
 normal sync, and exits nonzero if any client fails or disconnects. Use it only
 against servers you own or are authorized to test.
+
+For servers that use the roleplay character name as the account identity,
+`--load-direct-character` logs in with that generated name and skips textdraw
+character selection.
 
 The mode deliberately runs one client per process because the legacy RakNet
 implementation does not fully isolate peer state at higher in-process

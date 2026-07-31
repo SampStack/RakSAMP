@@ -20,6 +20,18 @@ void Parse(LoadModeOptions &options, const char *name, const char *value)
 	assert(error.empty());
 	assert(index == 2);
 }
+
+void ParseFlag(LoadModeOptions &options, const char *name)
+{
+	char executable[] = "raksamp-client";
+	char *arguments[] = {executable, const_cast<char *>(name)};
+	int index = 1;
+	std::string error;
+	assert(ParseLoadModeOption(2, arguments, index, options, error) ==
+		LoadOptionParseResult::Matched);
+	assert(error.empty());
+	assert(index == 1);
+}
 }
 
 int main()
@@ -43,6 +55,10 @@ int main()
 	assert(MakeLoadAccountName(options, 0) == "rp_load0100");
 	assert(MakeLoadCharacterName(options, 0) == "Load_Aadv");
 	assert(options.startFile == "/tmp/raksamp-load.start");
+
+	ParseFlag(options, "--load-direct-character");
+	assert(options.directCharacter);
+	assert(MakeLoadAccountName(options, 0) == "Load_Aadv");
 
 	options.clientCount = 2;
 	assert(!ValidateLoadModeOptions(options, error));
