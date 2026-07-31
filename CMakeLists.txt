@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(RakSAMP
-    VERSION 0.9.4
+    VERSION 0.9.5
     DESCRIPTION "Cross-platform SA-MP 0.3.7 and 0.3DL fake client and development server"
     LANGUAGES C CXX)
 
