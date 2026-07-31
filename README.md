@@ -7,7 +7,7 @@
 [![Architectures](https://img.shields.io/badge/arch-x64%20%7C%20ARM64-blue)](docs/development.md)
 [![Containers](https://img.shields.io/badge/GHCR-public-informational?logo=github)](docs/releasing.md)
 [![Native builds](https://img.shields.io/badge/native-downloads-public-informational?logo=github)](https://github.com/SampStack/RakSAMP/releases/tag/dev)
-[![Publish](https://img.shields.io/badge/workflow-manual%20only-orange?logo=githubactions)](.github/workflows/publish-containers.yml)
+[![Publish](https://img.shields.io/badge/dev-on%20master-blue?logo=githubactions)](.github/workflows/publish-containers.yml)
 
 RakSAMP provides two command-line tools for SA-MP development:
 
@@ -106,17 +106,20 @@ docker run --rm -it -p 7777:7777/udp \
 
 ## Downloads
 
-The manual release workflow publishes both delivery formats:
+The release workflow publishes both delivery formats:
 
 - **Native archives** — Linux x64/ARM64, Windows x64, and macOS Intel/Apple Silicon.
 - **Containers** — public `linux/amd64` images on GHCR.
 
-Download the rolling [development release](https://github.com/SampStack/RakSAMP/releases/tag/dev), extract the archive for your product and platform, then run the executable beside its included XML configuration. Development assets are replaced only when a maintainer starts the manual workflow.
+Download the rolling [development release](https://github.com/SampStack/RakSAMP/releases/tag/dev),
+extract the archive for your product and platform, then run the executable beside its included XML
+configuration. Development assets are replaced by every successful relevant `master` build.
 
-macOS archives are currently unsigned. If Gatekeeper quarantines a build you trust, remove the quarantine attribute from the extracted directory:
+macOS archives are ad-hoc signed. After verifying that the release and checksum are the ones you
+intend to trust, authorize only the extracted package with its checksum-gated helper:
 
 ```bash
-xattr -dr com.apple.quarantine raksamp-client
+bash ./authorize-macos-runtime.sh --trust
 ```
 
 ## Support matrix

@@ -1,35 +1,34 @@
 # Releasing
 
-Publication is intentionally manual.
+Pull requests build and test without publishing. Every successful relevant merge to `master`
+replaces the mutable `dev` release and linux/amd64 container tags. Immutable versions are manual.
 
-Run the build-only `Native build` workflow first. It creates temporary artifacts without changing
-tags, releases, containers, or packages.
+For an immutable release, first accept the current `dev` assets on their supported platforms.
 
 1. Open **Actions → Build and publish releases → Run workflow**.
 2. Set `source_ref` to the reviewed branch, tag, or commit. It defaults to `master`.
-3. Keep `push_dev` enabled to update the rolling development release.
-4. Leave `release_version` empty for dev-only publication, or enter an intentional immutable
-   version such as `v0.9.4`. A single run may publish both the version and `dev` from one revision.
+3. Enter an intentional immutable three-part version such as `0.9.5`.
+4. Keep `push_dev` enabled only when the same revision should also replace the rolling build.
 5. Confirm consuming gamemodes passed native validation.
 6. Review the validation and five native build jobs.
 7. Approve the protected `ghcr-publish` environment.
 
 ## Development builds
 
-`dev` is deliberately mutable. A successful manual run:
+`dev` is deliberately mutable. A successful relevant `master` build:
 
 - moves the `dev` tag to the selected revision;
 - replaces the assets on the public `dev` GitHub prerelease;
 - replaces the public `dev` client and server container manifests.
 
-It does not publish `latest` and is never triggered by a push or pull request.
+It does not publish `latest`. Pull requests never publish.
 
 ## Versioned builds
 
 Any non-empty `release_version` creates a new, non-prerelease GitHub Release and matching container
 tags. Versioned tags are immutable: the workflow fails if the tag already exists.
 
-Use an intentional version such as `v0.9.0` only after accepting the `dev` build on the supported platforms.
+Use an intentional version such as `0.9.5` only after accepting the `dev` build on the supported platforms.
 
 ## Published artifacts
 

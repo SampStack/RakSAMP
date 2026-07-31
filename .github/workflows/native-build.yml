@@ -14,7 +14,7 @@ on:
         required: true
         default: master
         type: string
-  push:
+  pull_request:
     branches: [master]
     paths:
       - .github/workflows/native-build.yml
@@ -24,6 +24,7 @@ on:
       - server/**
       - common/**
       - tests/**
+      - packaging/**
 
 permissions:
   contents: read
@@ -74,6 +75,8 @@ jobs:
         run: ctest --test-dir build -C Release --output-on-failure
       - name: Stage packages
         shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
         run: |
           cmake --install build --config Release --prefix package/raksamp-client --component client
           cmake --install build --config Release --prefix package/raksamp-server --component server
@@ -83,6 +86,17 @@ jobs:
           fi
           "package/raksamp-client/raksamp-client${executable_suffix}" --version
           "package/raksamp-server/raksamp-server${executable_suffix}" --version
+          if [[ "$PLATFORM" == macos ]]; then
+            for product in client server; do
+              package_dir="package/raksamp-$product"
+              executable="$package_dir/raksamp-$product"
+              codesign --force --sign - --timestamp=none "$executable"
+              codesign --verify --strict "$executable"
+              cp packaging/authorize-macos-runtime.sh "$package_dir/"
+              chmod +x "$package_dir/authorize-macos-runtime.sh"
+              (cd "$package_dir" && shasum -a 256 "raksamp-$product" > macos-runtime.sha256)
+            done
+          fi
       - name: Create archives
         shell: bash
         env:

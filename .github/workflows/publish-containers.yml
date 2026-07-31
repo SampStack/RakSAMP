@@ -1,6 +1,19 @@
 name: Build and publish releases
 
 on:
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/native-build.yml
+      - .github/workflows/publish-containers.yml
+      - CMakeLists.txt
+      - "**/*.cmake"
+      - client/**
+      - server/**
+      - common/**
+      - tests/**
+      - packaging/**
+      - Dockerfile
   workflow_dispatch:
     inputs:
       source_ref:
@@ -9,7 +22,7 @@ on:
         default: master
         type: string
       release_version:
-        description: Optional immutable release tag (for example v0.9.4)
+        description: Optional immutable release tag (for example 0.9.5)
         required: false
         default: ""
         type: string
@@ -28,24 +41,33 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: publish-raksamp
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
 jobs:
   validate:
     name: Validate client and server
     runs-on: ubuntu-24.04
     outputs:
       revision: ${{ steps.source.outputs.revision }}
+      publish_dev: ${{ steps.source.outputs.publish_dev }}
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.source_ref }}
+          ref: ${{ github.event_name == 'push' && github.sha || inputs.source_ref }}
       - name: Pin source revision
         id: source
-        run: echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        env:
+          PUSH_DEV: ${{ github.event_name == 'push' || inputs.push_dev }}
+        run: |
+          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "publish_dev=$PUSH_DEV" >> "$GITHUB_OUTPUT"
       - name: Validate release tag
         env:
           RELEASE_TAG: ${{ inputs.release_version }}
-          PUSH_DEV: ${{ inputs.push_dev }}
-          CONSUMERS_GREEN: ${{ inputs.native_consumers_green }}
+          PUSH_DEV: ${{ github.event_name == 'push' || inputs.push_dev }}
+          CONSUMERS_GREEN: ${{ github.event_name == 'push' || inputs.native_consumers_green }}
         run: |
           if [[ "$CONSUMERS_GREEN" != "true" ]]; then
             echo "::error::Consuming gamemodes must pass native validation before publication."
@@ -56,7 +78,7 @@ jobs:
             exit 1
           fi
           if [[ -n "$RELEASE_TAG" ]]; then
-            [[ "$RELEASE_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]
+            [[ "$RELEASE_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9][A-Za-z0-9.-]*)?$ ]]
             [[ "$RELEASE_TAG" != "dev" ]]
             git check-ref-format "refs/tags/$RELEASE_TAG"
             if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
@@ -107,7 +129,7 @@ jobs:
           images: ghcr.io/sampstack/raksamp-${{ matrix.product }}
           tags: |
             type=raw,value=${{ inputs.release_version }},enable=${{ inputs.release_version != '' }}
-            type=raw,value=dev,enable=${{ inputs.push_dev }}
+            type=raw,value=dev,enable=${{ needs.validate.outputs.publish_dev == 'true' }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ needs.validate.outputs.revision }}
@@ -146,7 +168,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_version }}
-          PUSH_DEV: ${{ inputs.push_dev }}
+          PUSH_DEV: ${{ needs.validate.outputs.publish_dev }}
         shell: bash
         run: |
           revision=$(git rev-parse HEAD)
@@ -169,6 +191,7 @@ jobs:
               printf -- '- SA-MP 0.3.7 and 0.3DL protocols\n'
               printf -- '- Native packages for Linux x64/arm64, Windows x64, and macOS x64/arm64\n'
               printf -- '- Client and server containers for linux/amd64\n\n'
+              printf '**Development status:** This release is actively developed; behavior and packaging may change before a future stability declaration.\n\n'
               printf '## Changes since %s\n\n%s\n\n' "$previous_tag" "$generated_notes"
               printf '**Full comparison:** %s/%s/compare/%s...%s\n' \
                 "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$previous_tag" "$RELEASE_TAG"
@@ -180,8 +203,11 @@ jobs:
             fi
             git tag "$RELEASE_TAG" "$revision"
             git push origin "refs/tags/$RELEASE_TAG"
+            prerelease=()
+            [[ "$RELEASE_TAG" != *-* ]] || prerelease+=(--prerelease)
             gh release create "$RELEASE_TAG" \
               --verify-tag \
+              "${prerelease[@]}" \
               --title "RakSAMP $RELEASE_TAG" \
               --notes-file "$notes_file"
             gh release upload "$RELEASE_TAG" native-dist/*
@@ -194,15 +220,16 @@ jobs:
               gh release edit dev \
                 --title "RakSAMP development build" \
                 --prerelease \
-                --notes "Rolling development build from \`$revision\`. Replaced only by a manual workflow run."
+                --notes "Rolling development build from \`$revision\`. Replaced by the next successful master build."
             else
               gh release create dev \
                 --target "$revision" \
                 --title "RakSAMP development build" \
                 --prerelease \
-                --notes "Rolling development build from \`$revision\`. Replaced only by a manual workflow run."
+                --notes "Rolling development build from \`$revision\`. Replaced by the next successful master build."
             fi
-            gh release delete-asset dev raksamp-client-windows-arm64.zip --yes 2>/dev/null || true
-            gh release delete-asset dev raksamp-server-windows-arm64.zip --yes 2>/dev/null || true
+            gh release view dev --json assets --jq '.assets[].name' | while IFS= read -r asset; do
+              [[ -z "$asset" ]] || gh release delete-asset dev "$asset" --yes
+            done
             gh release upload dev native-dist/* --clobber
           fi

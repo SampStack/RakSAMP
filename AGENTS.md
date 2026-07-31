@@ -33,9 +33,9 @@
 - Follow `docs/development.md` and the `maintain-raksamp` skill. Use focused `ctest -R` first;
   reserve `make test`, image builds, and multi-platform publication for their actual boundary.
 - Platform or delivery changes require the five-target build-only workflow for the exact revision.
-- A current validated task may push `master`. Publish mutable `dev` only after consuming gamemodes
-  pass their applicable native consumer validation. An immutable release also requires an explicit
-  version from the user.
+- A current validated task may push `master`. After the initial consuming-gamemode native gate,
+  relevant `master` pushes replace `dev`; pull requests never publish. Immutable versions require
+  an explicit three-part version and manual dispatch.
 - Native archives cover Linux x64/arm64, Windows x64, and macOS x64/arm64. GHCR client/server images are linux/amd64 only and disable
   provenance/SBOM attestations so package metadata contains no `unknown/unknown` platform.
 - After container-heavy work, inspect `docker system df`. Use the safe `docker-clean` skill only
