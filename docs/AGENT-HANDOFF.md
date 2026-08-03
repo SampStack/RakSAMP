@@ -5,13 +5,12 @@
 
 ## Active slice
 
-- Status: generic key-state automation implemented and locally validated; ready to commit and push
+- Status: generic key-state automation is published as immutable 0.10.1 and proven by Roleplay ATM flows
 - Outcome: publish RakSAMP 0.10.1 with protocol-correct automation for every server-visible key action,
   then prove and pin it in the Roleplay ATM workflow
-- Next action: commit and push `master`, then run the five-target build-only workflow before local
-  Roleplay consumer validation
+- Next action: none in RakSAMP; Roleplay is pinning the immutable release and completing stack acceptance
 - Scope: `!key down|up`, on-foot/driver/passenger packing, aliases/raw masks, tests, docs, and 0.10.1 release
-- Do not add: gamemode-specific commands, arbitrary OS scancodes, immutable publication before consumer proof
+- Do not add: gamemode-specific commands or arbitrary OS scancodes
 
 ## Decisions
 
@@ -29,10 +28,14 @@
 - Passed: AddressSanitizer/UndefinedBehaviorSanitizer build and all 11 tests
 - Passed: focused `key-state` test with named actions, aliases, raw masks, invalid combinations, and exact
   on-foot/driver/passenger additional-key packing, including legacy follow-state preservation
-- Pending: remote five-target build-only workflow, Roleplay 0.3.7/0.3DL consumer proof, immutable release,
-  and remote-artifact revalidation
+- Passed: build-only run 30837493479 on Linux x64/arm64, Windows x64, macOS x64/arm64, and sanitizers
+- Passed: local Roleplay ATM interaction, withdrawal, deposit, and durable ledger consumer proof on
+  both 0.3.7 and 0.3DL using the 0.10.1 native artifact
+- Published: workflow 30837685687 reused the proven artifacts; tag `0.10.1` targets `32f592a`, all
+  11 native archives plus `SHA256SUMS` are present, and the manifest hash is
+  `2128b2529650afd79f4d62f01c56e608010e0638c8f3550ef525aefa50b6e97f`
 
 ## State
 
-- Repository started clean on `master` aligned with `origin/master` at `a986602` / immutable 0.10.0
-- Roleplay remains clean on `main`; its implementation has not started
+- Feature and portability fixes are pushed through `32f592a`; immutable 0.10.1 is published
+- Roleplay implementation is complete and its dependency pin/full acceptance are in progress
