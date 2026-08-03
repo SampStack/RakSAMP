@@ -418,7 +418,7 @@ int RunCommand(char *szCMD, int iFromAutorun)
 	{
 		char *szPlayerName = &szCMD[10];
 
-		sprintf_s(settings.szFollowingPlayerName, 20, szPlayerName);
+		sprintf_s(settings.szFollowingPlayerName, sizeof(settings.szFollowingPlayerName), "%s", szPlayerName);
 
 		settings.runMode = RUNMODE_FOLLOWPLAYER;
 
@@ -680,14 +680,14 @@ int RunCommand(char *szCMD, int iFromAutorun)
 			return 1;
 		}
 
-		sprintf_s(settings.server.szAddr, sizeof(settings.server.szAddr), szIP);
+		sprintf_s(settings.server.szAddr, sizeof(settings.server.szAddr), "%s", szIP);
 		settings.server.iPort = atoi(szPort);
 
 		if(iParamsCount > 2)
-			sprintf_s(g_szNickName, sizeof(g_szNickName), szName);
+			sprintf_s(g_szNickName, sizeof(g_szNickName), "%s", szName);
 
 		if(iParamsCount > 3)
-			sprintf_s(settings.server.szPassword, sizeof(settings.server.szPassword), szPassword);
+			sprintf_s(settings.server.szPassword, sizeof(settings.server.szPassword), "%s", szPassword);
 
 		iGettingNewName = true;
 		sampDisconnect(0);
@@ -716,7 +716,7 @@ int RunCommand(char *szCMD, int iFromAutorun)
 
 		if(!strncmp(szChangeNameType, "reconnect", 9) || !strncmp(szChangeNameType, "RECONNECT", 9))
 		{
-			sprintf_s(g_szNickName, 32, szNewPlayerName);
+			sprintf_s(g_szNickName, sizeof(g_szNickName), "%s", szNewPlayerName);
 
 			iGettingNewName = true;
 			sampDisconnect(0);
@@ -726,7 +726,7 @@ int RunCommand(char *szCMD, int iFromAutorun)
 		}
 		else if(!strncmp(szChangeNameType, "rejoin", 6) || !strncmp(szChangeNameType, "REJOIN", 6))
 		{
-			sprintf_s(g_szNickName, 32, szNewPlayerName);
+			sprintf_s(g_szNickName, sizeof(g_szNickName), "%s", szNewPlayerName);
 			strcpy(playerInfo[g_myPlayerID].szPlayerName, g_szNickName);
 
 			int iVersion = settings.iNetworkVersion;

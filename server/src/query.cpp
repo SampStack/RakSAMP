@@ -41,7 +41,7 @@ void modifyRuleValue(char* szSRule, char* szMValue)
 	{
 		if(!strcmp(rules[x].szRule, szSRule))
 		{
-			sprintf_s(rules[x].szValue, 64, szMValue);
+			sprintf_s(rules[x].szValue, sizeof(rules[x].szValue), "%s", szMValue);
 		}
 	}
 }

@@ -1,9 +1,11 @@
 #include "load_mode_options.h"
+#include "safe_parse.h"
 
 #include <algorithm>
 #include <cerrno>
 #include <climits>
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
 #include <iomanip>
 #include <sstream>
@@ -12,18 +14,7 @@ namespace
 {
 bool ParseInteger(const char *value, int &result)
 {
-	if(value == nullptr || value[0] == '\0')
-		return false;
-
-	char *end = nullptr;
-	errno = 0;
-	const long parsed = std::strtol(value, &end, 10);
-	if(errno != 0 || end == value || *end != '\0' ||
-		parsed < INT_MIN || parsed > INT_MAX)
-		return false;
-
-	result = static_cast<int>(parsed);
-	return true;
+	return raksamp::parse::IntegerValue(value, result);
 }
 
 bool IsAccountPrefix(const std::string &value)
@@ -49,7 +40,7 @@ bool IsCharacterFirstName(const std::string &value)
 
 std::string AlphaSuffix(std::size_t value)
 {
-	// Four letters cover 456,976 clients while keeping roleplay names short.
+	// Four letters cover 456,976 workers while preserving the 24-byte name limit.
 	std::string suffix(4, 'a');
 	for(std::size_t position = suffix.size(); position > 0; --position)
 	{
@@ -127,6 +118,11 @@ LoadOptionParseResult ParseLoadModeOption(
 		option == "--load-sync-rate" ||
 		option == "--load-ready-timeout" ||
 		option == "--load-anticheat-probe-clients" ||
+		option == "--load-probe-clients" ||
+		option == "--load-probe-health" ||
+		option == "--load-probe-armour" ||
+		option == "--load-probe-weapon" ||
+		option == "--load-probe-velocity-x" ||
 		option == "--load-index-offset" ||
 		option == "--load-account-prefix" ||
 		option == "--load-character-first" ||
@@ -153,6 +149,10 @@ LoadOptionParseResult ParseLoadModeOption(
 		option == "--load-sync-rate" ||
 		option == "--load-ready-timeout" ||
 		option == "--load-anticheat-probe-clients" ||
+		option == "--load-probe-clients" ||
+		option == "--load-probe-health" ||
+		option == "--load-probe-armour" ||
+		option == "--load-probe-weapon" ||
 		option == "--load-index-offset")
 	{
 		if(!ParseInteger(value, parsed))
@@ -172,8 +172,25 @@ LoadOptionParseResult ParseLoadModeOption(
 		options.syncRatePerSecond = parsed;
 	else if(option == "--load-ready-timeout")
 		options.readyTimeoutSeconds = parsed;
-	else if(option == "--load-anticheat-probe-clients")
-		options.antiCheatProbeClients = parsed;
+	else if(option == "--load-anticheat-probe-clients" ||
+		option == "--load-probe-clients")
+		options.probeClients = parsed;
+	else if(option == "--load-probe-health")
+		options.probeHealth = parsed;
+	else if(option == "--load-probe-armour")
+		options.probeArmour = parsed;
+	else if(option == "--load-probe-weapon")
+		options.probeWeapon = parsed;
+	else if(option == "--load-probe-velocity-x")
+	{
+		float velocity = 0.0f;
+		if(!raksamp::parse::FloatValue(value, velocity, -10000.0f, 10000.0f))
+		{
+			error = option + " requires a finite value between -10000 and 10000";
+			return LoadOptionParseResult::Error;
+		}
+		options.probeVelocityX = velocity;
+	}
 	else if(option == "--load-index-offset")
 		options.indexOffset = parsed;
 	else if(option == "--load-account-prefix")
@@ -206,9 +223,14 @@ bool ValidateLoadModeOptions(const LoadModeOptions &options, std::string &error)
 		error = "--load-sync-rate must be between 1 and 30 updates per second";
 	else if(options.readyTimeoutSeconds < 5 || options.readyTimeoutSeconds > 900)
 		error = "--load-ready-timeout must be between 5 and 900 seconds";
-	else if(options.antiCheatProbeClients < 0 ||
-		options.antiCheatProbeClients > options.clientCount)
-		error = "--load-anticheat-probe-clients must be between 0 and --load-clients";
+	else if(options.probeClients < 0 ||
+		options.probeClients > options.clientCount)
+		error = "--load-probe-clients must be between 0 and --load-clients";
+	else if(options.probeHealth < 0 || options.probeHealth > 255 ||
+		options.probeArmour < 0 || options.probeArmour > 255 ||
+		options.probeWeapon < 0 || options.probeWeapon > 255 ||
+		!std::isfinite(options.probeVelocityX))
+		error = "load probe values must fit their protocol fields and be finite";
 	else if(options.indexOffset < 0 ||
 		options.indexOffset + options.clientCount > 100)
 		error = "--load-index-offset plus --load-clients must be between 1 and 100";

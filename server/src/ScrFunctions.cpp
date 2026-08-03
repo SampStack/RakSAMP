@@ -491,7 +491,7 @@ int PlayAudioStreamForPlayer(lua_State *L)
 	PLAYERID playerID = lua_tointeger(L, 1);
 	
 	char szURL[256];
-	sprintf_s(szURL, 256, lua_tostring(L, 2));
+	sprintf_s(szURL, sizeof(szURL), "%s", lua_tostring(L, 2));
 
 	lua_Number PosX = lua_tonumber(L, 3);
 	lua_Number PosY = lua_tonumber(L, 4);

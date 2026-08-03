@@ -619,7 +619,7 @@ void processBulletFlood()
 
 	find_another_target:
 	{
-		for ( targetid; targetid < MAX_PLAYERS; targetid++ )
+		for ( ; targetid < MAX_PLAYERS; targetid++ )
 		{
 			if ( targetid >= 0 && targetid < MAX_PLAYERS && targetid != g_myPlayerID && playerInfo[targetid].iIsConnected && (playerInfo[targetid].iIsStreamedIn || playerInfo[targetid].iGotMarkersPos) )
 				break;

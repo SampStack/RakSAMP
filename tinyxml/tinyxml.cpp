@@ -1239,16 +1239,28 @@ int TiXmlAttribute::QueryVectorValue( float* fvecval ) const
 }
 int TiXmlAttribute::QueryPointerValue( void* pval ) const
 {
-	if ( TIXML_SSCANF( value.c_str(), "0x%p", pval) == 1 )
+	void** output = static_cast<void**>( pval );
+	if ( !output )
+		return TIXML_WRONG_TYPE;
+	if ( TIXML_SSCANF( value.c_str(), "0x%p", output) == 1 )
 		return TIXML_SUCCESS;
-	if ( TIXML_SSCANF( value.c_str(), "%p", pval) == 1 )
+	if ( TIXML_SSCANF( value.c_str(), "%p", output) == 1 )
 		return TIXML_SUCCESS;
 	return TIXML_WRONG_TYPE;
 }
 int TiXmlAttribute::QueryColorValue( unsigned char* _value1, unsigned char* _value2, unsigned char* _value3 ) const
 {
-	if ( TIXML_SSCANF( value.c_str(), "%u %u %u", _value1, _value2, _value3) == 3 )
+	unsigned int value1 = 0;
+	unsigned int value2 = 0;
+	unsigned int value3 = 0;
+	if ( TIXML_SSCANF( value.c_str(), "%u %u %u", &value1, &value2, &value3) == 3 &&
+		 value1 <= 255 && value2 <= 255 && value3 <= 255 )
+	{
+		*_value1 = static_cast<unsigned char>( value1 );
+		*_value2 = static_cast<unsigned char>( value2 );
+		*_value3 = static_cast<unsigned char>( value3 );
 		return TIXML_SUCCESS;
+	}
 	return TIXML_WRONG_TYPE;
 }
 // M0D MOD END
@@ -1887,4 +1899,3 @@ bool TiXmlPrinter::Visit( const TiXmlUnknown& unknown )
 	DoLineBreak();
 	return true;
 }
-

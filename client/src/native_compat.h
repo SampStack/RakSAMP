@@ -88,15 +88,6 @@ inline int sprintf_s(char *buffer, size_t size, const char *format, ...)
 	return result;
 }
 
-inline int sprintf_s(char *buffer, const char *format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	int result = vsprintf(buffer, format, args);
-	va_end(args);
-	return result;
-}
-
 inline int vsprintf_s(char *buffer, size_t size, const char *format, va_list args)
 {
 	return vsnprintf(buffer, size, format, args);

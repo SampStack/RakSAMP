@@ -630,7 +630,7 @@ BYTE ClampedVital(float value)
 void SendSync(
 	LoadSession &session,
 	Clock::time_point now,
-	int syncRate,
+	const LoadModeOptions &options,
 	bool antiCheatProbeEnabled)
 {
 	if(session.client == nullptr ||
@@ -638,7 +638,8 @@ void SendSync(
 		now < session.nextSyncAt)
 		return;
 
-	const auto interval = std::chrono::microseconds(1000000 / syncRate);
+	const auto interval = std::chrono::microseconds(
+		1000000 / options.syncRatePerSecond);
 	session.nextSyncAt = now + interval;
 	if(session.spectating)
 	{
@@ -670,12 +671,12 @@ void SendSync(
 				session.localPort);
 			std::fflush(stdout);
 		}
-		// The roleplay load harness uses these intentionally impossible values
-		// to prove movement, vitals, and weapon corrections under concurrency.
-		sync.byteHealth = 255;
-		sync.byteArmour = 100;
-		sync.byteCurrentWeapon = 24;
-		sync.vecMoveSpeed[0] = 10.0f;
+		// The external harness owns the meaning of these generic, opt-in probe
+		// values and the assertions made about the server's response.
+		sync.byteHealth = static_cast<BYTE>(options.probeHealth);
+		sync.byteArmour = static_cast<BYTE>(options.probeArmour);
+		sync.byteCurrentWeapon = static_cast<BYTE>(options.probeWeapon);
+		sync.vecMoveSpeed[0] = options.probeVelocityX;
 	}
 	RakNet::BitStream output;
 	output.Write(static_cast<BYTE>(ID_PLAYER_SYNC));
@@ -737,7 +738,7 @@ int RunLoadMode(const LoadModeOptions &options)
 		options.connectRatePerSecond,
 		options.syncRatePerSecond,
 		SampProtocolName(settings.protocol),
-		options.antiCheatProbeClients);
+		options.probeClients);
 	std::fflush(stdout);
 
 	while(!interrupted)
@@ -749,11 +750,11 @@ int RunLoadMode(const LoadModeOptions &options)
 			const bool probeEnabled =
 				soakStartedAt != Clock::time_point{} &&
 				session->index <
-					static_cast<std::size_t>(options.antiCheatProbeClients);
+					static_cast<std::size_t>(options.probeClients);
 			SendSync(
 				*session,
 				now,
-				options.syncRatePerSecond,
+				options,
 				probeEnabled);
 		}
 

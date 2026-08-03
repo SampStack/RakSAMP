@@ -292,7 +292,7 @@ void UpdateNetwork()
 	unsigned char packetIdentifier;
 	Packet *pkt;
 
-	while(pkt = pRakServer->Receive())
+	while((pkt = pRakServer->Receive()))
 	{
 		if ( ( unsigned char ) pkt->data[ 0 ] == ID_TIMESTAMP )
 		{

@@ -11,7 +11,11 @@ struct LoadModeOptions
 	int connectRatePerSecond = 5;
 	int syncRatePerSecond = 5;
 	int readyTimeoutSeconds = 180;
-	int antiCheatProbeClients = 0;
+	int probeClients = 0;
+	int probeHealth = 255;
+	int probeArmour = 100;
+	int probeWeapon = 24;
+	float probeVelocityX = 10.0f;
 	int indexOffset = 0;
 	bool selectionRequired = true;
 	std::string accountPrefix = "loadtest";

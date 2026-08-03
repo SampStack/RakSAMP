@@ -1,4 +1,5 @@
 #include "main.h"
+#include "safe_parse.h"
 
 #include <csignal>
 #include <filesystem>
@@ -65,19 +66,26 @@ bool LoadConfiguration()
 		return false;
 	}
 
-	long configuredPlayers = strtol(maxPlayers, NULL, 10);
-	long configuredPort = strtol(port, NULL, 10);
-	if(configuredPlayers < 1 || configuredPlayers > MAX_PLAYERS ||
-		configuredPort < 1 || configuredPort > 65535)
+	unsigned int configuredPlayers = 0;
+	unsigned int configuredPort = 0;
+	unsigned int configuredLagComp = 0;
+	if(!raksamp::parse::IntegerValue(
+			maxPlayers, configuredPlayers, 1u,
+			static_cast<unsigned int>(MAX_PLAYERS)) ||
+		!raksamp::parse::IntegerValue(
+			port, configuredPort, 1u, 65535u) ||
+		!raksamp::parse::IntegerValue(
+			lagComp, configuredLagComp, 0u, 1u) ||
+		strlen(name) >= sizeof(serverName))
 	{
-		fprintf(stderr, "max_players or port is outside the supported range\n");
+		fprintf(stderr, "max_players, port, lagcomp, or name is invalid\n");
 		return false;
 	}
 
 	usMaxPlayers = static_cast<unsigned short>(configuredPlayers);
 	iPort = static_cast<int>(configuredPort);
 	snprintf(serverName, sizeof(serverName), "%s", name);
-	iLagCompensation = atoi(lagComp) ? 1 : 0;
+	iLagCompensation = static_cast<int>(configuredLagComp);
 
 	std::filesystem::path parent = std::filesystem::absolute(configPath).parent_path();
 	snprintf(szWorkingDirectory, sizeof(szWorkingDirectory), "%s", parent.string().c_str());

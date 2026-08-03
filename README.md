@@ -68,10 +68,11 @@ The mode deliberately runs one client per process because the legacy RakNet
 implementation does not fully isolate peer state at higher in-process
 concurrency. Harnesses coordinate workers with unique
 `--load-index-offset` values and a shared `--load-start-file`, up to 100 clients
-in total. An optional
-`--load-anticheat-probe-clients N` flag makes the first N clients report
-impossible movement, boosted vitals, and an unauthorized weapon during the
-soak so an authorized server harness can verify its correction paths.
+in total. Optional `--load-probe-*` flags let an external harness choose the
+exact velocity, vitals, and weapon fields reported by selected workers. RakSAMP
+does not assign meaning to those values; the implementing server and its test
+harness define the expected response. The older
+`--load-anticheat-probe-clients` spelling remains a compatibility alias.
 `--load-password` and `RAKSAMP_LOAD_PASSWORD` remain compatibility aliases for
 the generic input response.
 
@@ -131,6 +132,7 @@ bash ./authorize-macos-runtime.sh --trust
 | SA-MP 0.3DL / network 4062 | ✅ | ✅ |
 | Mixed 0.3.7 and 0.3DL sessions | N/A | ✅ |
 | Headless stdin automation | ✅ | N/A |
+| Structured JSONL automation | ✅ | N/A |
 | Process-isolated load worker | ✅ | N/A |
 | Lua 5.4.8 scripting | N/A | ✅ |
 | Custom-model metadata handshake | ✅ | N/A |
@@ -145,6 +147,11 @@ GUI projects remain as reference material and are not part of supported builds
 or packages.
 
 ## Client commands
+
+Pass `--jsonl` to use the versioned, language-neutral automation stream. Each
+stdin line is either `{"command":"send","line":"/command"}` or
+`{"command":"capabilities"}`. Stdout emits JSON objects, including log and
+capability events. Plain-text stdin remains the default for compatibility.
 
 Normal input is sent as chat; input beginning with `/` is sent as a server command. Local commands begin with `!`.
 

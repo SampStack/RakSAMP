@@ -4,13 +4,14 @@
 
 #include "main.h"
 
-#define Define(name, value) strcat(szScript, name); strcat(szScript, " = "); strcat(szScript, value); strcat(szScript, "\n");
+#include <string>
+
+#define Define(name, value) szScript.append(name).append(" = ").append(value).append("\n")
 
 void generateAndLoadInternalScript(lua_State *L)
 {
-	char *szScript = new char[10334];
-
-	sprintf(szScript, "MAX_PLAYERS = %u\nMAX_VEHICLES = %u\n", MAX_PLAYERS, MAX_VEHICLES);
+	std::string szScript = "MAX_PLAYERS = " + std::to_string(MAX_PLAYERS) +
+		"\nMAX_VEHICLES = " + std::to_string(MAX_VEHICLES) + "\n";
 
 	Define("KEY_ACTION", "1");
 	Define("KEY_CROUCH", "2");
@@ -53,14 +54,15 @@ void generateAndLoadInternalScript(lua_State *L)
 	Define("BULLET_HIT_TYPE_OBJECT", "3");
 	Define("BULLET_HIT_TYPE_PLAYER_OBJECT", "4");
 
-	char buf[256];
 	for(int n = 0; n < VEHICLE_LIST_SIZE; n++)
 	{
-		sprintf(buf, "%s = %u\n", vehicle_list[n].name, vehicle_list[n].id);
-		strcat(szScript, buf);
+		szScript.append(vehicle_list[n].name)
+			.append(" = ")
+			.append(std::to_string(vehicle_list[n].id))
+			.append("\n");
 	}
 
-	int error = luaL_loadbuffer(L, szScript, strlen(szScript), "line");
+	int error = luaL_loadbuffer(L, szScript.data(), szScript.size(), "line");
 	if(!error)
 		lua_pcall(L, 0, 0, 0);
 	else
@@ -69,5 +71,4 @@ void generateAndLoadInternalScript(lua_State *L)
 		lua_pop(L, 1);
 	}
 
-	delete[] szScript;
 }

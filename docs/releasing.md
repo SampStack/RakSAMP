@@ -9,7 +9,7 @@ For an immutable release, first accept the current `dev` assets on their support
 1. Open **Actions → Build and publish releases → Run workflow**.
 2. Set `source_ref` to the reviewed branch, tag, or commit. It defaults to `master`.
 3. Leave `push_dev` enabled to refresh the rolling build, or clear it if only an immutable release is wanted.
-4. Optionally enter an intentional immutable three-part version such as `0.9.5`.
+4. Optionally enter an intentional immutable three-part version such as `0.10.0`.
 5. Select `build_only` to retain artifacts without publishing anything.
 6. Confirm consuming gamemodes passed native validation for an immutable release.
 7. Review the validation and five native build jobs, then approve `ghcr-publish` when publishing.
@@ -33,7 +33,7 @@ It does not publish `latest`. Pull requests never publish.
 Any non-empty `release_version` creates a new, non-prerelease GitHub Release and matching container
 tags. Versioned tags are immutable: the workflow fails if the tag already exists.
 
-Use an intentional version such as `0.9.5` only after accepting the `dev` build on the supported platforms.
+Use an intentional version such as `0.10.0` only after accepting the `dev` build on the supported platforms.
 
 ## Published artifacts
 

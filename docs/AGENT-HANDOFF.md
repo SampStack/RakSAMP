@@ -5,41 +5,48 @@
 
 ## Active slice
 
-- Status: immutable `0.9.5` native set and both linux/amd64 images are published
-- Outcome: five native targets and one linux/amd64 manifest per container
-- Next action: use a branch and pull request for the next change
-- Scope: release workflow and delivery documentation
-- Do not touch: product behavior or native target matrix
+- Status: local implementation and consumer validation complete; remote build/release pending
+- Outcome: release protocol-generic RakSAMP 0.10.0, prove it against both supported protocols in the
+  consuming roleplay gamemode, then publish native/container artifacts
+- Next action: commit, fast-forward `master`, push, and run the five-target build-only workflow
+- Scope: client state convergence, checked protocol/config parsing, generic automation and load probes,
+  development-server formatting safety, sanitizer coverage, documentation, and release gates
+- Do not touch: gamemode-specific behavior in RakSAMP or immutable publication before consumer proof
 
 ## State
 
-- Done: generic consumer and proportional validation rules are documented
-- Done: removed arm64 container/QEMU work and `unknown/unknown` attestation manifests
-- Done: exact-head five-target run 30661085491 passed at `2502706`
-- Done: native macOS arm64 client passed focused acceptance against both gamemodes
-- Done: run 30664811130 published ten archives without Windows arm64
-- Done: client/server GHCR tags each contain one linux/amd64 image manifest
-- Done: both gamemodes downloaded and ran the public macOS arm64 client from empty caches
-- Done: push publication removed; manual workflow defaults to `dev`, supports `build_only`, and can
-  publish successful same-commit artifacts through `artifact_run_id`
-- Done: immutable run 30667483205 published ten native archives and both images
-- Done: macOS packages include checksum-gated authorization helpers and ad-hoc signatures
-- Done: consuming gamemodes are pinned to `0.9.5` and passed final empty-cache native acceptance
-- Blocked: none
-- Decisions: containers are linux/amd64 only; native targets are Linux x64/arm64, Windows x64, and
-  macOS x64/arm64; no publication until consuming gamemode validation passes
+- Branch: `codex/reset-weapon-inventory-sync` from current `origin/master`
+- Reproduction: after `/gun`, hospital recovery clears the authoritative loadout, but RakSAMP's empty
+  `ID_WEAPONS_UPDATE` omits all slots and open.mp retains the prior weapon in `GetPlayerWeaponData`
+- Decision: normal inventory updates remain sparse; reset updates explicitly serialize all 13 slots as zero
+- Consumer evidence: roleplay 0.3DL reports `WeaponManipulation` about two seconds after discharge;
+  command ordering is valid and the retained slot is the pre-recovery server-granted weapon
+- Release decision: user selected immutable 0.10.0 and explicitly authorized direct push to `master`
+- Hardening: checked readers now reject truncated/non-finite key RPC and sync fields; configuration parsing
+  uses bounded values and atomic settings/rate commit; structured JSONL automation is opt-in and versioned
+- Customization: load probes expose independent protocol fields with generic names; old anti-cheat/password
+  option spellings remain compatibility aliases
+- Safety: reachable unbounded formatting was replaced, TinyXML byte-color parsing was corrected, and
+  invalid post-release RakNet page writes were removed
 
 ## Verification
 
-- Passed: prior v0.9.4 native matrix and product tests
-- Passed: workflow YAML, skill validation, and whitespace checks for the x64-only policy
-- Failed: none
-- Passed: five native jobs, product tests, package staging, and archive upload
-- Passed: immutable manifest `5c65fe5f...`; both GHCR tags are one linux/amd64 image
-- Passed: post-release re-pin and focused native consumer acceptance
+- Passed before this slice: immutable `0.9.5` five-target release and prior consumer acceptance
+- Passed: final 0.10.0 Debug client/server build, all 10 native tests, both sample configuration checks
+- Passed: AddressSanitizer + UndefinedBehaviorSanitizer build, all 10 tests, and both config checks
+- Passed: consuming roleplay hospital weapon-clear scenario on 0.3.7 and 0.3DL with anti-cheat enabled;
+  each held a four-second negative window with no `WeaponManipulation` correction
+- Passed with diagnostic fixture relaxations only: corrected local client completed the 0.3DL hospital recovery
+  without a weapon correction; the fixture relaxations were reverted immediately
+- Observed on 0.3.7 before a fixture-only assertion failed: discharge emitted no weapon correction during
+  the four-second observation window; a clean final consumer rerun remains pending
+- Failed then fixed: first client build exposed the C-array-to-`std::array` reset conversion;
+  reset now uses `fill`, and the focused serializer test had already built successfully
+- Not run: remote five-target native matrix, containers, immutable release verification
 
 ## Resume
 
-- Files: `AGENTS.md`, this file, `.codex/hooks.json`, then files named by the active request
-- Commands: use the `maintain-raksamp` skill to select focused validation
-- Risks: consumer evidence can accidentally shape public APIs too narrowly
+- Files: completed uncommitted 0.10.0 hardening slice across client/server/common/tests/docs/workflows
+- Commands: local sanitized build is `build-sanitized`; normal build is `build`
+- Risks: legacy RakNet remains permissive internally; supported entry points are now checked and sanitizer
+  gated, but the remote OS/architecture matrix and real consuming server remain the release authorities

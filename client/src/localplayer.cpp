@@ -4,6 +4,7 @@
 
 #include "main.h"
 #include "player_damage.h"
+#include "weapon_inventory.h"
 
 #include <algorithm>
 #include <cmath>
@@ -312,12 +313,7 @@ void SendGiveTakeDamage(bool taking, PLAYERID otherPlayerId, float damage, DWORD
 namespace
 {
 	DWORD lastIncomingDamageTick[MAX_PLAYERS] = {};
-	struct WeaponInventoryEntry
-	{
-		BYTE weaponId;
-		WORD ammo;
-	};
-	WeaponInventoryEntry weaponInventory[13] = {};
+	WeaponInventory weaponInventory = {};
 }
 
 void ResetDamageEmulation()
@@ -327,16 +323,18 @@ void ResetDamageEmulation()
 
 void ResetWeaponInventory()
 {
-	memset(weaponInventory, 0, sizeof(weaponInventory));
+	weaponInventory.fill({ 0, 0 });
 	settings.bCurrentWeapon = 0;
-	SendWeaponInventoryUpdate();
+	// The server retains omitted weapon slots from incremental updates. Send
+	// every cleared slot so ResetPlayerWeapons converges its authoritative
+	// inventory instead of leaving stale weapons behind.
+	SendWeaponInventoryUpdate(true);
 }
 
 void SetWeaponInventoryEntry(DWORD weaponId, DWORD ammo)
 {
 	const int slot = raksamp::damage::GetWeaponSlot(weaponId);
-	if(slot < 0 || slot >= static_cast<int>(sizeof(weaponInventory) /
-		sizeof(weaponInventory[0])))
+	if(slot < 0 || slot >= static_cast<int>(weaponInventory.size()))
 		return;
 
 	weaponInventory[slot].weaponId = static_cast<BYTE>(weaponId);
@@ -345,7 +343,7 @@ void SetWeaponInventoryEntry(DWORD weaponId, DWORD ammo)
 	SendWeaponInventoryUpdate();
 }
 
-void SendWeaponInventoryUpdate()
+void SendWeaponInventoryUpdate(bool includeEmptySlots)
 {
 	if(!pRakClient || !iAreWeConnected)
 		return;
@@ -354,18 +352,10 @@ void SendWeaponInventoryUpdate()
 	bsWeapons.Write(static_cast<BYTE>(ID_WEAPONS_UPDATE));
 	bsWeapons.Write(static_cast<PLAYERID>(-1));
 	bsWeapons.Write(static_cast<PLAYERID>(-1));
-	for(std::size_t slot = 0;
-		slot < sizeof(weaponInventory) / sizeof(weaponInventory[0]);
-		++slot)
-	{
-		const auto &entry = weaponInventory[slot];
-		if(entry.weaponId == 0 || entry.ammo == 0)
-			continue;
-
-		bsWeapons.Write(static_cast<BYTE>(slot));
-		bsWeapons.Write(entry.weaponId);
-		bsWeapons.Write(entry.ammo);
-	}
+	WriteWeaponInventorySlots(
+		bsWeapons,
+		weaponInventory,
+		includeEmptySlots);
 	pRakClient->Send(
 		&bsWeapons,
 		HIGH_PRIORITY,

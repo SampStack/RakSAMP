@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(RakSAMP
-    VERSION 0.9.5
+    VERSION 0.10.0
     DESCRIPTION "Cross-platform SA-MP 0.3.7 and 0.3DL fake client and development server"
     LANGUAGES C CXX)
 
@@ -16,6 +16,15 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 option(RAKSAMP_BUILD_CLIENT "Build the headless fake client" ON)
 option(RAKSAMP_BUILD_SERVER "Build the Lua development server" ON)
+option(RAKSAMP_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+
+if(RAKSAMP_ENABLE_SANITIZERS)
+    if(MSVC)
+        message(FATAL_ERROR "RAKSAMP_ENABLE_SANITIZERS requires GCC or Clang")
+    endif()
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address,undefined)
+endif()
 
 if(BUILD_TESTING)
     add_executable(protocol-tests tests/protocol_tests.cpp)
@@ -33,7 +42,7 @@ if(BUILD_TESTING)
     add_executable(load-mode-options-tests
         tests/load_mode_options_tests.cpp
         client/src/load_mode_options.cpp)
-    target_include_directories(load-mode-options-tests PRIVATE client/src)
+    target_include_directories(load-mode-options-tests PRIVATE client/src common)
     add_test(NAME load-mode-options COMMAND load-mode-options-tests)
 
     add_executable(player-damage-tests
@@ -41,6 +50,36 @@ if(BUILD_TESTING)
         client/src/player_damage.cpp)
     target_include_directories(player-damage-tests PRIVATE client/src)
     add_test(NAME player-damage COMMAND player-damage-tests)
+
+    add_executable(weapon-inventory-tests
+        tests/weapon_inventory_tests.cpp)
+    target_include_directories(weapon-inventory-tests PRIVATE client/src)
+    add_test(NAME weapon-inventory COMMAND weapon-inventory-tests)
+
+    add_executable(safe-parse-tests tests/safe_parse_tests.cpp)
+    target_include_directories(safe-parse-tests PRIVATE common)
+    add_test(NAME safe-parse COMMAND safe-parse-tests)
+
+    add_executable(checked-reader-tests tests/checked_reader_tests.cpp)
+    target_include_directories(checked-reader-tests PRIVATE client/src)
+    add_test(NAME checked-reader COMMAND checked-reader-tests)
+
+    add_executable(automation-protocol-tests
+        tests/automation_protocol_tests.cpp
+        client/src/automation_protocol.cpp)
+    target_include_directories(automation-protocol-tests PRIVATE client/src common)
+    target_compile_definitions(automation-protocol-tests PRIVATE
+        RAKSAMP_CLIENT POSIX_HEADLESS)
+    add_test(NAME automation-protocol COMMAND automation-protocol-tests)
+
+    add_executable(tinyxml-extension-tests
+        tests/tinyxml_extension_tests.cpp
+        tinyxml/tinystr.cpp
+        tinyxml/tinyxml.cpp
+        tinyxml/tinyxmlerror.cpp
+        tinyxml/tinyxmlparser.cpp)
+    target_include_directories(tinyxml-extension-tests PRIVATE tinyxml)
+    add_test(NAME tinyxml-extensions COMMAND tinyxml-extension-tests)
 endif()
 
 set(RAKSAMP_RAKNET_SOURCES
@@ -120,6 +159,7 @@ endfunction()
 if(RAKSAMP_BUILD_CLIENT)
     add_raksamp_core(raksamp-client-core client/src RAKSAMP_CLIENT)
     add_executable(raksamp-client
+		client/src/automation_protocol.cpp
         client/src/cmds.cpp
         client/src/localplayer.cpp
         client/src/load_mode.cpp

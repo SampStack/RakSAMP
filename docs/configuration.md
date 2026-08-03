@@ -27,8 +27,9 @@ raksamp-client --config path/to/RakSAMPClient.xml --protocol 0.3.7
 ### Process-isolated load mode
 
 Load mode is opt-in and runs one independent RakNet client worker per process.
-Harnesses use numbered account names (`loadtest0001`, `loadtest0002`, …) and valid
-roleplay character names (`Load_Aaaa`, `Load_Aaab`, …):
+Harnesses can use numbered login identities (`loadtest0001`, `loadtest0002`, …)
+and independently template the name sent during connection and any selection
+response required by the implementing server:
 
 ```bash
 RAKSAMP_LOAD_INPUT_RESPONSE='testpassword' raksamp-client \
@@ -38,7 +39,7 @@ RAKSAMP_LOAD_INPUT_RESPONSE='testpassword' raksamp-client \
   --load-connect-rate 5 \
   --load-sync-rate 5 \
   --load-ready-timeout 180 \
-  --load-anticheat-probe-clients 0 \
+  --load-probe-clients 0 \
   --load-account-prefix loadtest \
   --load-character-first Load \
   --load-player-name '{character}' \
@@ -56,10 +57,12 @@ connected through the soak. `--load-input-response` is also accepted, but the
 environment variable avoids exposing credentials in process listings. The
 older `--load-password` and `RAKSAMP_LOAD_PASSWORD` names remain compatibility
 aliases.
-When `--load-anticheat-probe-clients` is nonzero, the first N clients emit
-impossible velocity, boosted health and armour, and an unauthorized weapon
-only after every client is active. This is an opt-in integrity probe for
-servers you own; the server-side harness must verify the expected corrections.
+When `--load-probe-clients` is nonzero, the first N clients emit the values set
+by `--load-probe-health`, `--load-probe-armour`, `--load-probe-weapon`, and
+`--load-probe-velocity-x` only after every client is active. This is an opt-in,
+protocol-level state probe for servers you own. RakSAMP intentionally does not
+encode what those values mean; the server-side harness defines and verifies the
+expected behavior. The old `--load-anticheat-probe-clients` flag remains an alias.
 `--load-player-name` and `--load-selection-text` accept `{account}`,
 `{character}`, and `{index}` placeholders. Their defaults preserve the common
 account-login plus character-textdraw flow. `--load-no-selection` supports

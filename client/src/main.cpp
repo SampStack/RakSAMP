@@ -3,6 +3,7 @@
 */
 
 #include "main.h"
+#include "automation_protocol.h"
 #include "client_lifecycle.h"
 #include "load_mode.h"
 
@@ -151,7 +152,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 				#ifdef _WIN32
 					SetWindowText(texthwnd, szInfo);
 				#endif
-					sprintf_s(szLastInfo, szInfo);
+					sprintf_s(szLastInfo, sizeof(szLastInfo), "%s", szInfo);
 				}
 			}
 
@@ -315,7 +316,10 @@ void Log(char *fmt, ...)
 
 	if(settings.iConsole)
 	{
-		printf("%s", buffer);
+		if(IsAutomationJsonl())
+			EmitAutomationLog(buffer);
+		else
+			printf("%s", buffer);
 	}
 	else
 	{
@@ -377,11 +381,14 @@ static void PrintClientUsage()
 {
 	printf("Usage: raksamp-client [--config PATH] [--protocol 0.3.7|0.3DL]\n");
 	printf("                      [--check-config] [--help] [--version]\n");
+	printf("                      [--jsonl]\n");
 	printf("       raksamp-client [--config PATH] [--protocol 0.3.7|0.3DL]\n");
 	printf("                      --load-clients N --load-input-response VALUE\n");
 	printf("                      [--load-duration SECONDS] [--load-connect-rate N]\n");
 	printf("                      [--load-sync-rate N] [--load-ready-timeout SECONDS]\n");
-	printf("                      [--load-anticheat-probe-clients N]\n");
+	printf("                      [--load-probe-clients N] [--load-probe-health N]\n");
+	printf("                      [--load-probe-armour N] [--load-probe-weapon N]\n");
+	printf("                      [--load-probe-velocity-x N]\n");
 	printf("                      [--load-index-offset N] [--load-start-file PATH]\n");
 	printf("                      [--load-account-prefix PREFIX]\n");
 	printf("                      [--load-character-first FIRST]\n");
@@ -411,6 +418,11 @@ int main(int argc, char **argv)
 		if(!strcmp(argv[i], "--check-config"))
 		{
 			checkConfig = true;
+			continue;
+		}
+		if(!strcmp(argv[i], "--jsonl"))
+		{
+			SetAutomationJsonl(true);
 			continue;
 		}
 		if((!strcmp(argv[i], "--config") || !strcmp(argv[i], "--protocol")) && i + 1 >= argc)

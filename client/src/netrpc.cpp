@@ -3,7 +3,14 @@
 */
 
 #include "main.h"
+#include "checked_reader.h"
 #include "client_lifecycle.h"
+#include "safe_parse.h"
+
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <string>
 
 int iNetModeNormalOnfootSendRate, iNetModeNormalIncarSendRate, iNetModeFiringSendRate, iNetModeSendMultiplier;
 
@@ -44,8 +51,8 @@ static void ModelRequest(RPCParameters *rpcParams)
 		(rpcParams->numberOfBitsOfData / 8) + 1, false);
 	DWORD poolId = 0;
 	int count = 0;
-	data.Read(poolId);
-	data.Read(count);
+	if(!data.Read(poolId) || !data.Read(count))
+		return;
 	if(count <= 0 || poolId + 1 >= static_cast<DWORD>(count))
 		SendFinishedDownloading();
 }
@@ -62,27 +69,25 @@ void ServerJoin(RPCParameters *rpcParams)
 	PCHAR Data = reinterpret_cast<PCHAR>(rpcParams->input);
 	int iBitLength = rpcParams->numberOfBitsOfData;
 
-	CHAR szPlayerName[256];
-	PLAYERID playerId;
-	BYTE byteNameLen=0;
+	PLAYERID playerId = 0;
+	int iUnk = 0;
+	BYTE bIsNPC = 0;
+	std::string playerName;
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
-	
-	bsData.Read(playerId);
-	int iUnk = 0;
-	bsData.Read(iUnk);
-	BYTE bIsNPC = 0;
-	bsData.Read(bIsNPC);
-	bsData.Read(byteNameLen);
-	if(byteNameLen > 20) return;
-	bsData.Read(szPlayerName,byteNameLen);
-	szPlayerName[byteNameLen] = '\0';
+	raksamp::protocol::CheckedReader<RakNet::BitStream> reader(bsData);
+	if(!reader.Read(playerId, iUnk, bIsNPC) ||
+		!reader.String8(playerName, sizeof(playerInfo[0].szPlayerName) - 1))
+		return;
 	
 	if(playerId < 0 || playerId >= MAX_PLAYERS) return;
 
 	playerInfo[playerId].iIsConnected = 1;
 	playerInfo[playerId].byteIsNPC = bIsNPC;
-	strcpy((char *)playerInfo[playerId].szPlayerName, szPlayerName);
+	if(!raksamp::parse::Copy(
+		playerInfo[playerId].szPlayerName,
+		playerName.c_str()))
+		return;
 
 	//Log("***[JOIN] (%d) %s", playerId, szPlayerName);
 }
@@ -95,11 +100,10 @@ void ServerQuit(RPCParameters *rpcParams)
 	int iBitLength = rpcParams->numberOfBitsOfData;
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
-	PLAYERID playerId;
-	BYTE byteReason;
-
-	bsData.Read(playerId);
-	bsData.Read(byteReason);
+	PLAYERID playerId = 0;
+	BYTE byteReason = 0;
+	if(!bsData.Read(playerId) || !bsData.Read(byteReason))
+		return;
 
 	if(playerId < 0 || playerId >= MAX_PLAYERS) return;
 
@@ -116,9 +120,9 @@ void InitGame(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsInitGame((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	PLAYERID MyPlayerID;
-	bool bLanMode, bStuntBonus;
-	BYTE byteVehicleModels[212];
+	PLAYERID MyPlayerID = 0;
+	bool bLanMode = false, bStuntBonus = false;
+	BYTE byteVehicleModels[212] = {};
 
 	bool m_bZoneNames, m_bUseCJWalk, m_bAllowWeapons, m_bLimitGlobalChatRadius;
 	float m_fGlobalChatRadius, m_fNameTagDrawDistance;
@@ -130,68 +134,73 @@ void InitGame(RPCParameters *rpcParams)
 	int m_iDeathDropMoney;
 	bool m_bInstagib;
 
-	bsInitGame.ReadCompressed(m_bZoneNames);
-	bsInitGame.ReadCompressed(m_bUseCJWalk);
-	bsInitGame.ReadCompressed(m_bAllowWeapons);
-	bsInitGame.ReadCompressed(m_bLimitGlobalChatRadius);
-	bsInitGame.Read(m_fGlobalChatRadius);
-	bsInitGame.ReadCompressed(bStuntBonus);
-	bsInitGame.Read(m_fNameTagDrawDistance);
-	bsInitGame.ReadCompressed(m_bDisableEnterExits);
-	bsInitGame.ReadCompressed(m_bNameTagLOS);
-	bsInitGame.ReadCompressed(m_bManualVehicleEngineAndLight); // 
-	bsInitGame.Read(iSpawnsAvailable);
-	bsInitGame.Read(MyPlayerID);
-	bsInitGame.ReadCompressed(m_bShowPlayerTags);
-	bsInitGame.Read(m_iShowPlayerMarkers);
-	bsInitGame.Read(m_byteWorldTime);
-	bsInitGame.Read(m_byteWeather);
-	bsInitGame.Read(m_fGravity);
-	bsInitGame.ReadCompressed(bLanMode);
-	bsInitGame.Read(m_iDeathDropMoney);
-	bsInitGame.ReadCompressed(m_bInstagib);
+	int spawnsAvailable = 0;
+	int normalOnfootSendRate = 0;
+	int normalIncarSendRate = 0;
+	int firingSendRate = 0;
+	int sendMultiplier = 0;
+	BYTE lagCompensation = 0;
+	raksamp::protocol::CheckedReader<RakNet::BitStream> reader(bsInitGame);
+	if(!bsInitGame.ReadCompressed(m_bZoneNames) ||
+		!bsInitGame.ReadCompressed(m_bUseCJWalk) ||
+		!bsInitGame.ReadCompressed(m_bAllowWeapons) ||
+		!bsInitGame.ReadCompressed(m_bLimitGlobalChatRadius) ||
+		!reader.Finite(m_fGlobalChatRadius) ||
+		!bsInitGame.ReadCompressed(bStuntBonus) ||
+		!reader.Finite(m_fNameTagDrawDistance) ||
+		!bsInitGame.ReadCompressed(m_bDisableEnterExits) ||
+		!bsInitGame.ReadCompressed(m_bNameTagLOS) ||
+		!bsInitGame.ReadCompressed(m_bManualVehicleEngineAndLight) ||
+		!reader.Read(spawnsAvailable, MyPlayerID) ||
+		MyPlayerID >= MAX_PLAYERS ||
+		!bsInitGame.ReadCompressed(m_bShowPlayerTags) ||
+		!reader.Read(m_iShowPlayerMarkers, m_byteWorldTime, m_byteWeather) ||
+		!reader.Finite(m_fGravity) ||
+		!bsInitGame.ReadCompressed(bLanMode) ||
+		!reader.Read(m_iDeathDropMoney) ||
+		!bsInitGame.ReadCompressed(m_bInstagib))
+		return;
 
 	// Server's send rate restrictions
+	if(!reader.Read(normalOnfootSendRate, normalIncarSendRate,
+		firingSendRate, sendMultiplier, lagCompensation))
+		return;
+
+	BYTE unknown1 = 0, unknown2 = 0, unknown3 = 0;
+	std::string hostName;
+	if(!reader.Read(unknown1, unknown2, unknown3) ||
+		!reader.String8(hostName, sizeof(g_szHostName) - 1) ||
+		!reader.Bytes(reinterpret_cast<char *>(byteVehicleModels),
+			sizeof(byteVehicleModels)))
+		return;
 	if(!settings.uiForceCustomSendRates)
 	{
-		bsInitGame.Read(iNetModeNormalOnfootSendRate);
-		bsInitGame.Read(iNetModeNormalIncarSendRate);
-		bsInitGame.Read(iNetModeFiringSendRate);
-		bsInitGame.Read(iNetModeSendMultiplier);
+		if(normalOnfootSendRate < 1 || normalOnfootSendRate > 1000 ||
+			normalIncarSendRate < 1 || normalIncarSendRate > 1000 ||
+			firingSendRate < 1 || firingSendRate > 1000 ||
+			sendMultiplier < 1 || sendMultiplier > 100)
+			return;
+		iNetModeNormalOnfootSendRate = normalOnfootSendRate;
+		iNetModeNormalIncarSendRate = normalIncarSendRate;
+		iNetModeFiringSendRate = firingSendRate;
+		iNetModeSendMultiplier = sendMultiplier;
 	}
-	else
-		bsInitGame.SetReadOffset(bsInitGame.GetReadOffset() + 4*32);
 
-	bsInitGame.Read(m_bLagCompensation);
-
-	BYTE unk;
-	bsInitGame.Read(unk);
-	bsInitGame.Read(unk);
-	bsInitGame.Read(unk);
-
-	BYTE byteStrLen;
-	bsInitGame.Read(byteStrLen);
-	if(byteStrLen)
-	{
-		memset(g_szHostName,0,sizeof(g_szHostName));
-		bsInitGame.Read(g_szHostName, byteStrLen);
-	}
-	g_szHostName[byteStrLen] = '\0';
-
-	bsInitGame.Read((char *)&byteVehicleModels[0],212);
-
+	iSpawnsAvailable = spawnsAvailable;
+	m_bLagCompensation = lagCompensation;
+	raksamp::parse::Copy(g_szHostName, hostName.c_str());
 	g_myPlayerID = MyPlayerID;
 
 	char szTitle[64];
 	if(settings.iConsole)
 	{
-		sprintf(szTitle, "%s (%d) - %.16s - RakSAMP %s", g_szNickName, g_myPlayerID, g_szHostName, RAKSAMP_VERSION);
+		snprintf(szTitle, sizeof(szTitle), "%s (%d) - %.16s - RakSAMP %s", g_szNickName, g_myPlayerID, g_szHostName, RAKSAMP_VERSION);
 		SetConsoleTitle(szTitle);
 		Log("Connected to %.64s\n", g_szHostName);
 	}
 	else
 	{
-		sprintf(szTitle, "%s (%d) - RakSAMP %s", g_szNickName, g_myPlayerID, RAKSAMP_VERSION);
+		snprintf(szTitle, sizeof(szTitle), "%s (%d) - RakSAMP %s", g_szNickName, g_myPlayerID, RAKSAMP_VERSION);
 		SetWindowText(hwnd, szTitle);
 		Log("Connected to %.64s", g_szHostName);
 	}
@@ -209,28 +218,26 @@ void WorldPlayerAdd(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	PLAYERID playerId;
+	PLAYERID playerId = 0;
 	BYTE byteFightingStyle=4;
 	BYTE byteTeam=0;
 	int iSkin=0;
-	float vecPos[3];
+	float vecPos[3] = {};
 	float fRotation=0;
 	DWORD dwColor=0;
 
-	bsData.Read(playerId);
-	bsData.Read(byteTeam);
-	bsData.Read(iSkin);
+	raksamp::protocol::CheckedReader<RakNet::BitStream> reader(bsData);
+	if(!reader.Read(playerId, byteTeam, iSkin))
+		return;
 	if(settings.protocol == SampProtocol::V03DL)
 	{
-		DWORD customSkin;
-		bsData.Read(customSkin);
+		DWORD customSkin = 0;
+		if(!reader.Read(customSkin))
+			return;
 	}
-	bsData.Read(vecPos[0]);
-	bsData.Read(vecPos[1]);
-	bsData.Read(vecPos[2]);
-	bsData.Read(fRotation);
-	bsData.Read(dwColor);
-	bsData.Read(byteFightingStyle);
+	if(!reader.Finite3(vecPos) || !reader.Finite(fRotation) ||
+		!reader.Read(dwColor, byteFightingStyle))
+		return;
 
 	if(playerId < 0 || playerId >= MAX_PLAYERS) return;
 
@@ -254,8 +261,8 @@ void WorldPlayerDeath(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	PLAYERID playerId;
-	bsData.Read(playerId);
+	PLAYERID playerId = 0;
+	if(!bsData.Read(playerId)) return;
 
 	if(playerId < 0 || playerId >= MAX_PLAYERS) return;
 
@@ -272,7 +279,7 @@ void WorldPlayerRemove(RPCParameters *rpcParams)
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
 	PLAYERID playerId=0;
-	bsData.Read(playerId);
+	if(!bsData.Read(playerId)) return;
 
 	if(playerId < 0 || playerId >= MAX_PLAYERS) return;
 
@@ -293,11 +300,13 @@ void WorldVehicleAdd(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	NEW_VEHICLE NewVehicle;
+	NEW_VEHICLE NewVehicle = {};
+	if(!bsData.Read((char *)&NewVehicle,sizeof(NEW_VEHICLE))) return;
 
-	bsData.Read((char *)&NewVehicle,sizeof(NEW_VEHICLE));
-
-	if(NewVehicle.VehicleId < 0 || NewVehicle.VehicleId >= MAX_VEHICLES) return;
+	if(NewVehicle.VehicleId < 0 || NewVehicle.VehicleId >= MAX_VEHICLES ||
+		!std::isfinite(NewVehicle.vecPos[0]) ||
+		!std::isfinite(NewVehicle.vecPos[1]) ||
+		!std::isfinite(NewVehicle.vecPos[2])) return;
 
 	vehiclePool[NewVehicle.VehicleId].iDoesExist = 1;
 	vehiclePool[NewVehicle.VehicleId].fPos[0] = NewVehicle.vecPos[0];
@@ -320,7 +329,7 @@ void WorldVehicleRemove(RPCParameters *rpcParams)
 
 	VEHICLEID VehicleID;
 
-	bsData.Read(VehicleID);
+	if(!bsData.Read(VehicleID)) return;
 
 	if(VehicleID < 0 || VehicleID >= MAX_VEHICLES) return;
 
@@ -340,7 +349,7 @@ void ConnectionRejected(RPCParameters *rpcParams)
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 	BYTE byteRejectReason;
 
-	bsData.Read(byteRejectReason);
+	if(!bsData.Read(byteRejectReason)) return;
 
 	if(byteRejectReason==REJECT_REASON_BAD_VERSION)
 	{
@@ -353,11 +362,11 @@ void ConnectionRejected(RPCParameters *rpcParams)
 		iGettingNewName = true;
 
 		gen_random(randgen, 4);
-		sprintf(szNewNick, "%s_%s", g_szNickName, randgen);
+		snprintf(szNewNick, sizeof(szNewNick), "%.26s_%s", g_szNickName, randgen);
 
 		Log("[RAKSAMP] Bad nickname. Changing name to %s", szNewNick);
 
-		strcpy(g_szNickName, szNewNick);
+		snprintf(g_szNickName, sizeof(g_szNickName), "%s", szNewNick);
 		resetPools(1, 0);
 	}
 	else if(byteRejectReason==REJECT_REASON_BAD_MOD)
@@ -384,11 +393,9 @@ void ClientMessage(RPCParameters *rpcParams)
 	char szMsg[257];
 	memset(szMsg, 0, 257);
 
-	bsData.Read(dwColor);
-	bsData.Read(dwStrLen);
-	if(dwStrLen > 256) return;
-
-	bsData.Read(szMsg, dwStrLen);
+	if(!bsData.Read(dwColor) || !bsData.Read(dwStrLen) || dwStrLen > 256 ||
+		!bsData.Read(szMsg, dwStrLen))
+		return;
 	szMsg[dwStrLen] = 0;
 
 	if(settings.iFind)
@@ -445,9 +452,9 @@ void Chat(RPCParameters *rpcParams)
 	unsigned char szText[256];
 	memset(szText, 0, 256);
 
-	bsData.Read(playerId);
-	bsData.Read(byteTextLen);
-	bsData.Read((char*)szText, byteTextLen);
+	if(!bsData.Read(playerId) || !bsData.Read(byteTextLen) ||
+		!bsData.Read((char*)szText, byteTextLen))
+		return;
 	szText[byteTextLen] = 0;
 
 	if(playerId < 0 || playerId >= MAX_PLAYERS)
@@ -489,9 +496,9 @@ void UpdateScoresPingsIPs(RPCParameters *rpcParams)
 
 	for(PLAYERID i=0; i<(iBitLength/8)/9; i++)
 	{
-		bsData.Read(playerId);
-		bsData.Read(iPlayerScore);
-		bsData.Read(dwPlayerPing);
+		if(!bsData.Read(playerId) || !bsData.Read(iPlayerScore) ||
+			!bsData.Read(dwPlayerPing))
+			return;
 
 		if(playerId < 0 || playerId >= MAX_PLAYERS)
 			continue;
@@ -510,10 +517,14 @@ void SetCheckpoint(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	bsData.Read(settings.CurrentCheckpoint.fPosition[0]);
-	bsData.Read(settings.CurrentCheckpoint.fPosition[1]);
-	bsData.Read(settings.CurrentCheckpoint.fPosition[2]);
-	bsData.Read(settings.CurrentCheckpoint.fSize);
+	float position[3] = {};
+	float size = 0.0f;
+	raksamp::protocol::CheckedReader<RakNet::BitStream> reader(bsData);
+	if(!reader.Finite3(position) || !reader.Finite(size) || size <= 0.0f)
+		return;
+	for(std::size_t index = 0; index < 3; ++index)
+		settings.CurrentCheckpoint.fPosition[index] = position[index];
+	settings.CurrentCheckpoint.fSize = size;
 
 	settings.CurrentCheckpoint.bActive = true;
 
@@ -538,11 +549,12 @@ void Pickup(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	int PickupID;
-	PICKUP Pickup;
+	int PickupID = 0;
+	PICKUP Pickup = {};
 
-	bsData.Read(PickupID);
-	bsData.Read((PCHAR)&Pickup, sizeof(PICKUP));
+	if(!bsData.Read(PickupID) || !bsData.Read((PCHAR)&Pickup, sizeof(PICKUP)) ||
+		!std::isfinite(Pickup.fX) || !std::isfinite(Pickup.fY) ||
+		!std::isfinite(Pickup.fZ)) return;
 
 	if(settings.uiPickupsLogging != 0)
 	{
@@ -561,7 +573,7 @@ void DestroyPickup(RPCParameters *rpcParams)
 
 	int PickupID;
 
-	bsData.Read(PickupID);
+	if(!bsData.Read(PickupID)) return;
 
 	if(settings.uiPickupsLogging != 0)
 	{
@@ -578,23 +590,29 @@ void RequestClass(RPCParameters *rpcParams)
 
 	BYTE byteRequestOutcome = 0;
 
-	bsData.Read(byteRequestOutcome);
+	if(!bsData.Read(byteRequestOutcome))
+		return;
 
 	if(byteRequestOutcome)
 	{
-		bsData.Read(SpawnInfo.byteTeam);
-		bsData.Read(SpawnInfo.iSkin);
+		PLAYER_SPAWN_INFO parsed = {};
+		if(!bsData.Read(parsed.byteTeam) || !bsData.Read(parsed.iSkin))
+			return;
 		if(settings.protocol == SampProtocol::V03DL)
 		{
-			DWORD customSkin;
-			bsData.Read(customSkin);
+			DWORD customSkin = 0;
+			if(!bsData.Read(customSkin))
+				return;
 		}
-		bsData.Read(SpawnInfo.unk);
-		bsData.Read((PCHAR)&SpawnInfo.vecPos, sizeof(SpawnInfo.vecPos));
-		bsData.Read(SpawnInfo.fRotation);
-		bsData.Read((PCHAR)&SpawnInfo.iSpawnWeapons, sizeof(SpawnInfo.iSpawnWeapons));
-		bsData.Read((PCHAR)&SpawnInfo.iSpawnWeaponsAmmo, sizeof(SpawnInfo.iSpawnWeaponsAmmo));
-
+		if(!bsData.Read(parsed.unk) ||
+			!bsData.Read((PCHAR)&parsed.vecPos, sizeof(parsed.vecPos)) ||
+			!bsData.Read(parsed.fRotation) ||
+			!bsData.Read((PCHAR)&parsed.iSpawnWeapons, sizeof(parsed.iSpawnWeapons)) ||
+			!bsData.Read((PCHAR)&parsed.iSpawnWeaponsAmmo, sizeof(parsed.iSpawnWeaponsAmmo)) ||
+			!std::isfinite(parsed.vecPos[0]) || !std::isfinite(parsed.vecPos[1]) ||
+			!std::isfinite(parsed.vecPos[2]) || !std::isfinite(parsed.fRotation))
+			return;
+		SpawnInfo = parsed;
 		iLocalPlayerSkin = SpawnInfo.iSkin;
 	}
 }
@@ -607,7 +625,7 @@ void ScrInitMenu(RPCParameters *rpcParams)
 	int iBitLength = rpcParams->numberOfBitsOfData;
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	memset(&GTAMenu, 0, sizeof(struct stGTAMenu));
+	stGTAMenu parsedMenu = {};
 
 	BYTE byteMenuID;
 	BOOL bColumns; // 0 = 1, 1 = 2
@@ -618,46 +636,48 @@ void ScrInitMenu(RPCParameters *rpcParams)
 	float fCol2 = 0.0;
 	MENU_INT MenuInteraction;
 
-	bsData.Read(byteMenuID);
-	bsData.Read(bColumns);
-	bsData.Read(cText, MAX_MENU_LINE);
-	bsData.Read(fX);
-	bsData.Read(fY);
-	bsData.Read(fCol1);
-	if (bColumns) bsData.Read(fCol2);
-	bsData.Read(MenuInteraction.bMenu);
+	if(!bsData.Read(byteMenuID) || !bsData.Read(bColumns) ||
+		!bsData.Read(cText, MAX_MENU_LINE) ||
+		!bsData.Read(fX) || !bsData.Read(fY) || !bsData.Read(fCol1) ||
+		(bColumns && !bsData.Read(fCol2)) ||
+		!bsData.Read(MenuInteraction.bMenu))
+		return;
 	for (BYTE i = 0; i < MAX_MENU_ITEMS; i++)
-		bsData.Read(MenuInteraction.bRow[i]);
+		if(!bsData.Read(MenuInteraction.bRow[i])) return;
 
+	cText[MAX_MENU_LINE - 1] = '\0';
 	Log("[MENU] %s", cText);
-	strcpy(GTAMenu.szTitle, cText);
+	raksamp::parse::Copy(parsedMenu.szTitle, cText);
 
 	BYTE byteColCount;
-	bsData.Read(cText, MAX_MENU_LINE);
+	if(!bsData.Read(cText, MAX_MENU_LINE)) return;
+	cText[MAX_MENU_LINE - 1] = '\0';
 	Log("[MENU] %s", cText);
-	strcpy(GTAMenu.szSeparator, cText);
+	raksamp::parse::Copy(parsedMenu.szSeparator, cText);
 
-	bsData.Read(byteColCount);
-	GTAMenu.byteColCount = byteColCount;
+	if(!bsData.Read(byteColCount) || byteColCount > MAX_MENU_ITEMS) return;
+	parsedMenu.byteColCount = byteColCount;
 	for (BYTE i = 0; i < byteColCount; i++)
 	{
-		bsData.Read(cText, MAX_MENU_LINE);
+		if(!bsData.Read(cText, MAX_MENU_LINE)) return;
+		cText[MAX_MENU_LINE - 1] = '\0';
 		Log("[MENU:%d] %s", i, cText);
-		strcpy(GTAMenu.szColumnContent[i], cText);
+		raksamp::parse::Copy(parsedMenu.szColumnContent[i], cText);
 	}
 
 	if (bColumns)
 	{
-		bsData.Read(cText, MAX_MENU_LINE);
+		if(!bsData.Read(cText, MAX_MENU_LINE)) return;
 		//Log("4: %s", cText);
 
-		bsData.Read(byteColCount);
+		if(!bsData.Read(byteColCount) || byteColCount > MAX_MENU_ITEMS) return;
 		for (BYTE i = 0; i < byteColCount; i++)
 		{
-			bsData.Read(cText, MAX_MENU_LINE);
+			if(!bsData.Read(cText, MAX_MENU_LINE)) return;
 			//Log("5: %d %s", i, cText);
 		}
 	}
+	GTAMenu = parsedMenu;
 }
 
 #ifdef _WIN32
@@ -873,22 +893,28 @@ void ScrDialogBox(RPCParameters *rpcParams)
 	int iBitLength = rpcParams->numberOfBitsOfData;
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	bsData.Read(sampDialog.wDialogID);
-	bsData.Read(sampDialog.bDialogStyle);
-
-	bsData.Read(sampDialog.bTitleLength);
-	bsData.Read(sampDialog.szTitle, sampDialog.bTitleLength);
-	sampDialog.szTitle[sampDialog.bTitleLength] = 0;
-
-	bsData.Read(sampDialog.bButton1Len);
-	bsData.Read(sampDialog.szButton1, sampDialog.bButton1Len);
-	sampDialog.szButton1[sampDialog.bButton1Len] = 0;
-
-	bsData.Read(sampDialog.bButton2Len);
-	bsData.Read(sampDialog.szButton2, sampDialog.bButton2Len);
-	sampDialog.szButton2[sampDialog.bButton2Len] = 0;
-
-	stringCompressor->DecodeString(sampDialog.szInfo, 256, &bsData);
+	WORD dialogId = 0;
+	BYTE style = 0;
+	std::string title;
+	std::string button1;
+	std::string button2;
+	raksamp::protocol::CheckedReader<RakNet::BitStream> reader(bsData);
+	char information[sizeof(sampDialog.szInfo)] = {};
+	if(!reader.Read(dialogId, style) ||
+		!reader.String8(title, sizeof(sampDialog.szTitle) - 1) ||
+		!reader.String8(button1, sizeof(sampDialog.szButton1) - 1) ||
+		!reader.String8(button2, sizeof(sampDialog.szButton2) - 1) ||
+		!stringCompressor->DecodeString(information, sizeof(information), &bsData))
+		return;
+	sampDialog.wDialogID = dialogId;
+	sampDialog.bDialogStyle = style;
+	sampDialog.bTitleLength = static_cast<BYTE>(title.size());
+	sampDialog.bButton1Len = static_cast<BYTE>(button1.size());
+	sampDialog.bButton2Len = static_cast<BYTE>(button2.size());
+	raksamp::parse::Copy(sampDialog.szTitle, title.c_str());
+	raksamp::parse::Copy(sampDialog.szButton1, button1.c_str());
+	raksamp::parse::Copy(sampDialog.szButton2, button2.c_str());
+	raksamp::parse::Copy(sampDialog.szInfo, information);
 	Log("[DIALOG] id=%d style=%d title=%s button1=%s button2=%s info=%s",
 		sampDialog.wDialogID, sampDialog.bDialogStyle, sampDialog.szTitle,
 		sampDialog.szButton1, sampDialog.szButton2, sampDialog.szInfo);
@@ -933,13 +959,10 @@ void ScrGameText(RPCParameters *rpcParams)
 	char szMessage[400];
 	int iType, iTime, iLength;
 
-	bsData.Read(iType);
-	bsData.Read(iTime);
-	bsData.Read(iLength);
-
-	if(iLength > 400) return; // tsk tsk, kye
-
-	bsData.Read(szMessage, iLength);
+	if(!bsData.Read(iType) || !bsData.Read(iTime) || !bsData.Read(iLength) ||
+		iLength < 0 || iLength >= static_cast<int>(sizeof(szMessage)) ||
+		!bsData.Read(szMessage, iLength))
+		return;
 	szMessage[iLength] = '\0';
 
 	Log("[GAMETEXT] %s", szMessage);
@@ -954,8 +977,8 @@ void ScrPlayAudioStream(RPCParameters *rpcParams)
 	unsigned char bURLLen;
 	char szURL[256];
 
-	bsData.Read(bURLLen);
-	bsData.Read(szURL, bURLLen);
+	if(!bsData.Read(bURLLen) || !bsData.Read(szURL, bURLLen))
+		return;
 	szURL[bURLLen] = 0;
 
 	Log("[AUDIO_STREAM] %s", szURL);
@@ -968,7 +991,8 @@ void ScrSetDrunkLevel(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	bsData.Read(iDrunkLevel);
+	int parsed = 0;
+	if(bsData.Read(parsed)) iDrunkLevel = parsed;
 }
 
 void ScrHaveSomeMoney(RPCParameters *rpcParams)
@@ -978,10 +1002,13 @@ void ScrHaveSomeMoney(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	int iGivenMoney;
-	bsData.Read(iGivenMoney);
-
-	iMoney += iGivenMoney;
+	int iGivenMoney = 0;
+	if(!bsData.Read(iGivenMoney)) return;
+	const long long updated = static_cast<long long>(iMoney) + iGivenMoney;
+	iMoney = static_cast<int>(std::clamp(
+		updated,
+		static_cast<long long>(std::numeric_limits<int>::min()),
+		static_cast<long long>(std::numeric_limits<int>::max())));
 }
 
 void ScrResetMoney(RPCParameters *rpcParams)
@@ -1028,9 +1055,12 @@ void ScrSetPlayerPos(RPCParameters *rpcParams)
 
 	if(settings.iNormalModePosForce == 0)
 	{
-		bsData.Read(settings.fNormalModePos[0]);
-		bsData.Read(settings.fNormalModePos[1]);
-		bsData.Read(settings.fNormalModePos[2]);
+		float parsed[3] = {};
+		raksamp::protocol::CheckedReader<RakNet::BitStream> reader(bsData);
+		if(!reader.Finite3(parsed))
+			return;
+		for(std::size_t index = 0; index < 3; ++index)
+			settings.fNormalModePos[index] = parsed[index];
 	}
 }
 
@@ -1043,7 +1073,10 @@ void ScrSetPlayerFacingAngle(RPCParameters *rpcParams)
 
 	if(settings.iNormalModePosForce == 0)
 	{
-		bsData.Read(settings.fNormalModeRot);
+		float parsed = 0.0f;
+		raksamp::protocol::CheckedReader<RakNet::BitStream> reader(bsData);
+		if(reader.Finite(parsed))
+			settings.fNormalModeRot = parsed;
 	}
 }
 
@@ -1074,18 +1107,24 @@ void ScrSetSpawnInfo(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	bsData.Read(SpawnInfo.byteTeam);
-	bsData.Read(SpawnInfo.iSkin);
+	PLAYER_SPAWN_INFO parsed = {};
+	if(!bsData.Read(parsed.byteTeam) || !bsData.Read(parsed.iSkin))
+		return;
 	if(settings.protocol == SampProtocol::V03DL)
 	{
-		DWORD customSkin;
-		bsData.Read(customSkin);
+		DWORD customSkin = 0;
+		if(!bsData.Read(customSkin))
+			return;
 	}
-	bsData.Read(SpawnInfo.unk);
-	bsData.Read((PCHAR)&SpawnInfo.vecPos, sizeof(SpawnInfo.vecPos));
-	bsData.Read(SpawnInfo.fRotation);
-	bsData.Read((PCHAR)&SpawnInfo.iSpawnWeapons, sizeof(SpawnInfo.iSpawnWeapons));
-	bsData.Read((PCHAR)&SpawnInfo.iSpawnWeaponsAmmo, sizeof(SpawnInfo.iSpawnWeaponsAmmo));
+	if(!bsData.Read(parsed.unk) ||
+		!bsData.Read((PCHAR)&parsed.vecPos, sizeof(parsed.vecPos)) ||
+		!bsData.Read(parsed.fRotation) ||
+		!bsData.Read((PCHAR)&parsed.iSpawnWeapons, sizeof(parsed.iSpawnWeapons)) ||
+		!bsData.Read((PCHAR)&parsed.iSpawnWeaponsAmmo, sizeof(parsed.iSpawnWeaponsAmmo)) ||
+		!std::isfinite(parsed.vecPos[0]) || !std::isfinite(parsed.vecPos[1]) ||
+		!std::isfinite(parsed.vecPos[2]) || !std::isfinite(parsed.fRotation))
+		return;
+	SpawnInfo = parsed;
 
 	if(settings.iNormalModePosForce == 0)
 	{
@@ -1102,7 +1141,9 @@ void ScrSetPlayerHealth(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	bsData.Read(settings.fPlayerHealth);
+	float parsed = 0.0f;
+	if(bsData.Read(parsed) && std::isfinite(parsed))
+		settings.fPlayerHealth = parsed;
 }
 
 void ScrSetPlayerArmour(RPCParameters *rpcParams)
@@ -1112,7 +1153,9 @@ void ScrSetPlayerArmour(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	bsData.Read(settings.fPlayerArmour);
+	float parsed = 0.0f;
+	if(bsData.Read(parsed) && std::isfinite(parsed))
+		settings.fPlayerArmour = parsed;
 }
 
 void ScrSetPlayerSkin(RPCParameters *rpcParams)
@@ -1127,17 +1170,17 @@ void ScrSetPlayerSkin(RPCParameters *rpcParams)
 
 	if(settings.protocol == SampProtocol::V03DL)
 	{
-		PLAYERID playerID;
-		bsData.Read(playerID);
+		PLAYERID playerID = 0;
+		if(!bsData.Read(playerID)) return;
 		iPlayerID = playerID;
 	}
 	else
-		bsData.Read(iPlayerID);
-	bsData.Read(uiSkin);
+		if(!bsData.Read(iPlayerID)) return;
+	if(!bsData.Read(uiSkin)) return;
 	if(settings.protocol == SampProtocol::V03DL)
 	{
-		DWORD customSkin;
-		bsData.Read(customSkin);
+		DWORD customSkin = 0;
+		if(!bsData.Read(customSkin)) return;
 	}
 
 	if(iPlayerID < 0 || iPlayerID >= MAX_PLAYERS)
@@ -1154,29 +1197,26 @@ void ScrCreateObject(RPCParameters *rpcParams)
 
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
-	unsigned short ObjectID;
-	bsData.Read(ObjectID);
+	unsigned short ObjectID = 0;
+	if(!bsData.Read(ObjectID)) return;
 
-	unsigned long ModelID;
-	bsData.Read(ModelID);
+	DWORD ModelID = 0;
+	if(!bsData.Read(ModelID)) return;
 
-	float vecPos[3];
-	bsData.Read(vecPos[0]);
-	bsData.Read(vecPos[1]);
-	bsData.Read(vecPos[2]);
+	float vecPos[3] = {};
+	raksamp::protocol::CheckedReader<RakNet::BitStream> reader(bsData);
+	if(!reader.Finite3(vecPos)) return;
 
-	float vecRot[3];
-	bsData.Read(vecRot[0]);
-	bsData.Read(vecRot[1]);
-	bsData.Read(vecRot[2]);
+	float vecRot[3] = {};
+	if(!reader.Finite3(vecRot)) return;
 
-	float fDrawDistance;
-	bsData.Read(fDrawDistance);
+	float fDrawDistance = 0.0f;
+	if(!reader.Finite(fDrawDistance) || fDrawDistance < 0.0f) return;
 
 	if(settings.uiObjectsLogging != 0)
 	{
 		char szCreateObjectAlert[256];
-		sprintf_s(szCreateObjectAlert, sizeof(szCreateObjectAlert), "[OBJECT] %d, %d, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.2f", ObjectID, ModelID, vecPos[0], vecPos[1], vecPos[2], vecRot[0], vecRot[1], vecRot[2], fDrawDistance);
+		sprintf_s(szCreateObjectAlert, sizeof(szCreateObjectAlert), "[OBJECT] %d, %u, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.2f", ObjectID, ModelID, vecPos[0], vecPos[1], vecPos[2], vecRot[0], vecRot[1], vecRot[2], fDrawDistance);
 		Log(szCreateObjectAlert);
 	}
 }
@@ -1197,17 +1237,12 @@ void ScrCreate3DTextLabel(RPCParameters *rpcParams)
 	WORD PlayerID;
 	WORD VehicleID;
 
-	bsData.Read(ID);
-	bsData.Read(dwColor);
-	bsData.Read(vecPos[0]);
-	bsData.Read(vecPos[1]);
-	bsData.Read(vecPos[2]);
-	bsData.Read(DrawDistance);
-	bsData.Read(UseLOS);
-	bsData.Read(PlayerID);
-	bsData.Read(VehicleID);
-
-	stringCompressor->DecodeString(Text, 256, &bsData);
+	raksamp::protocol::CheckedReader<RakNet::BitStream> reader(bsData);
+	if(!reader.Read(ID, dwColor) || !reader.Finite3(vecPos) ||
+		!reader.Finite(DrawDistance) || DrawDistance < 0.0f ||
+		!reader.Read(UseLOS, PlayerID, VehicleID) ||
+		!stringCompressor->DecodeString(Text, sizeof(Text), &bsData))
+		return;
 
 	if(settings.uiTextLabelsLogging != 0)
 	{
@@ -1253,7 +1288,7 @@ void ScrHideTextDraw(RPCParameters *rpcParams)
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
 	WORD wTextID;
-	bsData.Read(wTextID);
+	if(!bsData.Read(wTextID)) return;
 
 	if(settings.uiTextDrawsLogging != 0)
 		Log("[TEXTDRAW:HIDE] ID: %d.", wTextID);

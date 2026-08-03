@@ -98,7 +98,7 @@ void SendClientMessage(PLAYERID playerID, DWORD dwColor, char* szMessage, ...)
 	va_list va;
 	va_start(va, szMessage);
 	char szBuffer[512] = { 0 };
-	vsprintf(szBuffer, szMessage, va);
+	vsnprintf(szBuffer, sizeof(szBuffer), szMessage, va);
 	va_end(va);
 
 	RakNet::BitStream bsParams;

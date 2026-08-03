@@ -23,6 +23,25 @@ permissions:
   contents: read
 
 jobs:
+  sanitizers:
+    name: Native Linux x64 sanitizers
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+          clean: true
+      - name: Configure
+        run: cmake -S . -B build-sanitized -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON -DRAKSAMP_ENABLE_SANITIZERS=ON
+      - name: Build
+        run: cmake --build build-sanitized --parallel
+      - name: Test
+        run: ctest --test-dir build-sanitized -C Debug --output-on-failure
+      - name: Validate sample configurations
+        run: |
+          build-sanitized/bin/raksamp-client --config client/bin/RakSAMPClient.xml --check-config
+          build-sanitized/bin/raksamp-server --config server/bin/RakSAMPServer.xml --check-config
+
   build:
     name: Native ${{ matrix.platform }} ${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}

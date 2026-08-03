@@ -9,7 +9,7 @@ on:
         default: master
         type: string
       release_version:
-        description: Optional immutable release tag (for example 0.9.5)
+        description: Optional immutable release tag (for example 0.10.0)
         required: false
         default: ""
         type: string

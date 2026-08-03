@@ -47,3 +47,12 @@ ctest --test-dir build --output-on-failure
 build/bin/raksamp-client --config client/bin/RakSAMPClient.xml --check-config
 build/bin/raksamp-server --config server/bin/RakSAMPServer.xml --check-config
 ```
+
+Run the same supported paths under AddressSanitizer and UndefinedBehaviorSanitizer:
+
+```bash
+cmake -S . -B build-sanitized -DCMAKE_BUILD_TYPE=Debug \
+  -DBUILD_TESTING=ON -DRAKSAMP_ENABLE_SANITIZERS=ON
+cmake --build build-sanitized --parallel
+ctest --test-dir build-sanitized --output-on-failure
+```

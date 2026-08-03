@@ -1,4 +1,5 @@
 #include "main.h"
+#include "automation_protocol.h"
 #include <mutex>
 #include <queue>
 #include <string>
@@ -122,6 +123,29 @@ void NativePumpCommands()
 		vehiclePool[forcedVehicleId].fPos[2] = settings.CurrentCheckpoint.fPosition[2];
 		Log("[GOTOCP] The driven vehicle has been teleported to the active checkpoint.");
 		return;
+	}
+	AutomationCommand automation;
+	std::string automationError;
+	const AutomationParseResult automationResult = ParseAutomationCommand(
+		buffer,
+		automation,
+		automationError);
+	if(automationResult == AutomationParseResult::Error)
+	{
+		Log("[AUTOMATION] %s", automationError.c_str());
+		return;
+	}
+	if(automationResult == AutomationParseResult::Command)
+	{
+		if(automation.command == "capabilities")
+		{
+			EmitAutomationCapabilities(
+				RAKSAMP_VERSION,
+				SampProtocolName(settings.protocol));
+			return;
+		}
+		strncpy(buffer, automation.line.c_str(), sizeof(buffer) - 1);
+		buffer[sizeof(buffer) - 1] = '\0';
 	}
 
 	if(!strncmp(buffer, "!entervehicle ", 14))

@@ -14,7 +14,7 @@ void HandleIncomingBulletDamage(PLAYERID attackerId, const BULLET_SYNC_DATA *bul
 void ResetDamageEmulation();
 void ResetWeaponInventory();
 void SetWeaponInventoryEntry(DWORD weaponId, DWORD ammo);
-void SendWeaponInventoryUpdate();
+void SendWeaponInventoryUpdate(bool includeEmptySlots = false);
 
 void SendEnterVehicleNotification(VEHICLEID VehicleID, BOOL bPassenger);
 void SendExitVehicleNotification(VEHICLEID VehicleID);
