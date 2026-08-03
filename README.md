@@ -162,7 +162,8 @@ Normal input is sent as chat; input beginning with `/` is sent as a server comma
 `!goto`, `!gotocp`, `!autogotocp`, `!spawn`, `!class`, `!pickup`, `!weapon`,
 `!shoot`, `!shootmiss`, `!damage`, `!takedamage`, `!key`, `!pos`, `!follow`, `!selplayer`, `!selveh`, `!vlist`, `!dialogresponse`,
 `!menusel`, `!seltd`, `!sendrates`, `!log`, `!logstatus`, `!teleport`,
-`!change_name`, `!change_server`, `!imitate`, and `!scmevent`.
+`!change_name`, `!change_server`, `!imitate`, `!driveposition`, `!driveto`,
+`!drivecancel`, `!drivestatus`, and `!scmevent`.
 
 `!shoot <player> [weapon]` emits correlated bullet sync and damage RPCs.
 `!shootmiss [weapon]` emits a non-damaging bullet miss for callback testing.
@@ -173,6 +174,18 @@ to the client, covering melee and deliberate damage-before-shot ordering tests.
 damage received by the headless client. The last command is explicit because
 RakSAMP has no GTA physics engine to independently simulate explosions,
 collisions, drowning, or falls; the server must still validate every report.
+
+`!driveposition <x> <y> <z>` moves the currently assigned driver vehicle and
+immediately emits driver sync. Coordinates must be finite and within the supported
+SA-MP world bounds. It intentionally provides an instant-position probe for testing
+server containment of malicious or corrective position changes.
+
+`!driveto <x> <y> <z> <duration-ms>` linearly interpolates the assigned driver
+vehicle over a bounded 100–60,000 milliseconds while normal driver sync continues.
+`!drivestatus` reports an active target and remaining duration, and `!drivecancel`
+stops motion at its current position. Starting another motion, teleporting to a
+checkpoint, changing seats/vehicles, or exiting cancels the prior motion. These
+commands reject passengers and clients without an assigned streamed vehicle.
 
 `!key <down|up> <action|mask> [action|mask ...]` holds or releases one or more
 server-visible SA-MP controls and immediately emits the appropriate on-foot,

@@ -49,6 +49,9 @@ Avalable runmodes:
 		!rcon: send an RCON command.
 		!goto: go to players position.
 		!gotocp: go to the current checkpoint.
+		!driveposition <x> <y> <z>: move the assigned driver vehicle and send sync.
+		!driveto <x> <y> <z> <duration-ms>: interpolate assigned-driver movement.
+		!drivestatus / !drivecancel: inspect or cancel active driver movement.
 		!autogotocp: toggle automatic checkpoint teleporter.
 		!imitate: change imitate name.
 		!vlist: shows list of vehicles.
