@@ -5,13 +5,13 @@
 
 ## Active slice
 
-- Status: generic bounded driver-position automation for 0.11.0 is implemented and has passed native,
-  sanitizer, configuration, and two-protocol Roleplay consumer gates; commit/PR/release remain
+- Status: immutable RakSAMP 0.11.0 is published from the exact commit that passed native, sanitizer,
+  configuration, and two-protocol Roleplay consumer gates
 - Outcome: publish RakSAMP 0.11.0 with instant `!driveposition` abuse probes plus bounded smooth
   `!driveto`, `!drivestatus`, and `!drivecancel` automation so consumers can distinguish gradual
   route evidence from instant checkpoint teleporting
-- Next action: commit, push, open and merge the RakSAMP PR, run the five-platform build-only workflow,
-  publish immutable 0.11.0, verify artifacts, and update the Roleplay dependency pin
+- Next action: update the Roleplay dependency pin to 0.11.0 and rerun the focused consumer scenarios
+  from the immutable release artifact
 - Scope: generic finite/bounded driver position parsing, 100–60,000 ms interpolation, motion status
   and cancellation, assigned-driver enforcement, tests, docs, and the explicit 0.11.0 release
 - Do not add: gamemode names, objectives, routes, fixture coordinates, or server-side bypasses
@@ -45,8 +45,12 @@
 - Published: workflow 30837685687 reused the proven artifacts; tag `0.10.1` targets `32f592a`, all
   11 native archives plus `SHA256SUMS` are present, and the manifest hash is
   `2128b2529650afd79f4d62f01c56e608010e0638c8f3550ef525aefa50b6e97f`
+- Published 0.11.0: PR #1 merged as `12f2a0b`; build-only workflow 30856578161 passed all five native
+  platforms and sanitizers; publication workflow 30856761460 reused those exact artifacts; tag
+  `0.11.0` targets `12f2a0b`; all 10 native archives plus `SHA256SUMS` are present; manifest hash is
+  `df7e020559507fe7e697b7f3a6e2b2f4ac1c910a9c158b43713bf4ae0df60b7e`
 
 ## State
 
-- The 0.11.0 change is uncommitted on `codex/driver-position-probe`; immutable 0.10.1 remains published
-- Roleplay hardening changes remain local until the required immutable 0.11.0 pin is available
+- RakSAMP `master` contains the 0.11.0 motion probes and immutable 0.11.0 is published
+- Roleplay hardening changes remain local until its 0.11.0 pin and released-artifact gates pass
