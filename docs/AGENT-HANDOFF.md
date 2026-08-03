@@ -5,10 +5,10 @@
 
 ## Active slice
 
-- Status: local implementation and consumer validation complete; remote build/release pending
+- Status: local and consumer validation complete; Windows portability follow-up ready for remote rerun
 - Outcome: release protocol-generic RakSAMP 0.10.0, prove it against both supported protocols in the
   consuming roleplay gamemode, then publish native/container artifacts
-- Next action: commit, fast-forward `master`, push, and run the five-target build-only workflow
+- Next action: push the Windows macro compatibility fix and rerun the six-job build-only workflow
 - Scope: client state convergence, checked protocol/config parsing, generic automation and load probes,
   development-server formatting safety, sanitizer coverage, documentation, and release gates
 - Do not touch: gamemode-specific behavior in RakSAMP or immutable publication before consumer proof
@@ -36,13 +36,15 @@
 - Passed: AddressSanitizer + UndefinedBehaviorSanitizer build, all 10 tests, and both config checks
 - Passed: consuming roleplay hospital weapon-clear scenario on 0.3.7 and 0.3DL with anti-cheat enabled;
   each held a four-second negative window with no `WeaponManipulation` correction
+- Remote: sanitizer, Linux x64/ARM64, and macOS x64/ARM64 passed on run `30826175161`; Windows exposed
+  the standard `max` macro collision in `safe_parse.h`, now fixed and covered by a macro-injection test
 - Passed with diagnostic fixture relaxations only: corrected local client completed the 0.3DL hospital recovery
   without a weapon correction; the fixture relaxations were reverted immediately
 - Observed on 0.3.7 before a fixture-only assertion failed: discharge emitted no weapon correction during
   the four-second observation window; a clean final consumer rerun remains pending
 - Failed then fixed: first client build exposed the C-array-to-`std::array` reset conversion;
   reset now uses `fill`, and the focused serializer test had already built successfully
-- Not run: remote five-target native matrix, containers, immutable release verification
+- Not run: clean remote Windows rerun, containers, immutable release verification
 
 ## Resume
 

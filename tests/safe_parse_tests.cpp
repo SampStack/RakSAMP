@@ -2,7 +2,9 @@
 #include <cmath>
 #include <string>
 
+#define max(a, b) windows_max_macro(a, b)
 #include "safe_parse.h"
+#undef max
 
 int main()
 {

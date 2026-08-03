@@ -30,7 +30,7 @@ bool IntegerValue(
 	const char *value,
 	Integer &result,
 	Integer minimum = std::numeric_limits<Integer>::lowest(),
-	Integer maximum = std::numeric_limits<Integer>::max())
+	Integer maximum = (std::numeric_limits<Integer>::max)())
 {
 	static_assert(std::is_integral_v<Integer>, "IntegerValue requires an integer");
 	if(value == nullptr || value[0] == '\0')
@@ -64,8 +64,8 @@ bool IntegerValue(
 inline bool FloatValue(
 	const char *value,
 	float &result,
-	float minimum = -std::numeric_limits<float>::max(),
-	float maximum = std::numeric_limits<float>::max())
+	float minimum = -(std::numeric_limits<float>::max)(),
+	float maximum = (std::numeric_limits<float>::max)())
 {
 	if(value == nullptr || value[0] == '\0')
 		return false;
