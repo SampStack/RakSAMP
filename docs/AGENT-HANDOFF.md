@@ -5,10 +5,10 @@
 
 ## Active slice
 
-- Status: local and consumer validation complete; Windows portability follow-up ready for remote rerun
+- Status: local and consumer validation complete; second Windows portability follow-up ready
 - Outcome: release protocol-generic RakSAMP 0.10.0, prove it against both supported protocols in the
   consuming roleplay gamemode, then publish native/container artifacts
-- Next action: push the Windows macro compatibility fix and rerun the six-job build-only workflow
+- Next action: push the centralized finite-number compatibility helper and rerun the build-only workflow
 - Scope: client state convergence, checked protocol/config parsing, generic automation and load probes,
   development-server formatting safety, sanitizer coverage, documentation, and release gates
 - Do not touch: gamemode-specific behavior in RakSAMP or immutable publication before consumer proof
@@ -38,6 +38,8 @@
   each held a four-second negative window with no `WeaponManipulation` correction
 - Remote: sanitizer, Linux x64/ARM64, and macOS x64/ARM64 passed on run `30826175161`; Windows exposed
   the standard `max` macro collision in `safe_parse.h`, now fixed and covered by a macro-injection test
+- Remote: run `30826422326` then exposed the Windows `isfinite` macro and `min` clamp collision; all
+  maintained finite checks now use `finite_value.h`, and numeric limit calls are macro-safe
 - Passed with diagnostic fixture relaxations only: corrected local client completed the 0.3DL hospital recovery
   without a weapon correction; the fixture relaxations were reverted immediately
 - Observed on 0.3.7 before a fixture-only assertion failed: discharge emitted no weapon correction during

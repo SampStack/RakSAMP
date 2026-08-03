@@ -5,6 +5,7 @@
 #include "main.h"
 #include "checked_reader.h"
 #include "client_lifecycle.h"
+#include "finite_value.h"
 #include "safe_parse.h"
 
 #include <algorithm>
@@ -304,9 +305,9 @@ void WorldVehicleAdd(RPCParameters *rpcParams)
 	if(!bsData.Read((char *)&NewVehicle,sizeof(NEW_VEHICLE))) return;
 
 	if(NewVehicle.VehicleId < 0 || NewVehicle.VehicleId >= MAX_VEHICLES ||
-		!std::isfinite(NewVehicle.vecPos[0]) ||
-		!std::isfinite(NewVehicle.vecPos[1]) ||
-		!std::isfinite(NewVehicle.vecPos[2])) return;
+		!raksamp::numeric::IsFinite(NewVehicle.vecPos[0]) ||
+		!raksamp::numeric::IsFinite(NewVehicle.vecPos[1]) ||
+		!raksamp::numeric::IsFinite(NewVehicle.vecPos[2])) return;
 
 	vehiclePool[NewVehicle.VehicleId].iDoesExist = 1;
 	vehiclePool[NewVehicle.VehicleId].fPos[0] = NewVehicle.vecPos[0];
@@ -553,8 +554,9 @@ void Pickup(RPCParameters *rpcParams)
 	PICKUP Pickup = {};
 
 	if(!bsData.Read(PickupID) || !bsData.Read((PCHAR)&Pickup, sizeof(PICKUP)) ||
-		!std::isfinite(Pickup.fX) || !std::isfinite(Pickup.fY) ||
-		!std::isfinite(Pickup.fZ)) return;
+		!raksamp::numeric::IsFinite(Pickup.fX) ||
+		!raksamp::numeric::IsFinite(Pickup.fY) ||
+		!raksamp::numeric::IsFinite(Pickup.fZ)) return;
 
 	if(settings.uiPickupsLogging != 0)
 	{
@@ -609,8 +611,10 @@ void RequestClass(RPCParameters *rpcParams)
 			!bsData.Read(parsed.fRotation) ||
 			!bsData.Read((PCHAR)&parsed.iSpawnWeapons, sizeof(parsed.iSpawnWeapons)) ||
 			!bsData.Read((PCHAR)&parsed.iSpawnWeaponsAmmo, sizeof(parsed.iSpawnWeaponsAmmo)) ||
-			!std::isfinite(parsed.vecPos[0]) || !std::isfinite(parsed.vecPos[1]) ||
-			!std::isfinite(parsed.vecPos[2]) || !std::isfinite(parsed.fRotation))
+			!raksamp::numeric::IsFinite(parsed.vecPos[0]) ||
+			!raksamp::numeric::IsFinite(parsed.vecPos[1]) ||
+			!raksamp::numeric::IsFinite(parsed.vecPos[2]) ||
+			!raksamp::numeric::IsFinite(parsed.fRotation))
 			return;
 		SpawnInfo = parsed;
 		iLocalPlayerSkin = SpawnInfo.iSkin;
@@ -1007,8 +1011,8 @@ void ScrHaveSomeMoney(RPCParameters *rpcParams)
 	const long long updated = static_cast<long long>(iMoney) + iGivenMoney;
 	iMoney = static_cast<int>(std::clamp(
 		updated,
-		static_cast<long long>(std::numeric_limits<int>::min()),
-		static_cast<long long>(std::numeric_limits<int>::max())));
+		static_cast<long long>((std::numeric_limits<int>::min)()),
+		static_cast<long long>((std::numeric_limits<int>::max)())));
 }
 
 void ScrResetMoney(RPCParameters *rpcParams)
@@ -1121,8 +1125,10 @@ void ScrSetSpawnInfo(RPCParameters *rpcParams)
 		!bsData.Read(parsed.fRotation) ||
 		!bsData.Read((PCHAR)&parsed.iSpawnWeapons, sizeof(parsed.iSpawnWeapons)) ||
 		!bsData.Read((PCHAR)&parsed.iSpawnWeaponsAmmo, sizeof(parsed.iSpawnWeaponsAmmo)) ||
-		!std::isfinite(parsed.vecPos[0]) || !std::isfinite(parsed.vecPos[1]) ||
-		!std::isfinite(parsed.vecPos[2]) || !std::isfinite(parsed.fRotation))
+		!raksamp::numeric::IsFinite(parsed.vecPos[0]) ||
+		!raksamp::numeric::IsFinite(parsed.vecPos[1]) ||
+		!raksamp::numeric::IsFinite(parsed.vecPos[2]) ||
+		!raksamp::numeric::IsFinite(parsed.fRotation))
 		return;
 	SpawnInfo = parsed;
 
@@ -1142,7 +1148,7 @@ void ScrSetPlayerHealth(RPCParameters *rpcParams)
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
 	float parsed = 0.0f;
-	if(bsData.Read(parsed) && std::isfinite(parsed))
+	if(bsData.Read(parsed) && raksamp::numeric::IsFinite(parsed))
 		settings.fPlayerHealth = parsed;
 }
 
@@ -1154,7 +1160,7 @@ void ScrSetPlayerArmour(RPCParameters *rpcParams)
 	RakNet::BitStream bsData((unsigned char *)Data,(iBitLength/8)+1,false);
 
 	float parsed = 0.0f;
-	if(bsData.Read(parsed) && std::isfinite(parsed))
+	if(bsData.Read(parsed) && raksamp::numeric::IsFinite(parsed))
 		settings.fPlayerArmour = parsed;
 }
 

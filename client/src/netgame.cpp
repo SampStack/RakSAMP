@@ -3,6 +3,7 @@
 */
 
 #include "main.h"
+#include "finite_value.h"
 #include "safe_parse.h"
 
 #include <cmath>
@@ -206,13 +207,13 @@ void Packet_PlayerSync(Packet *p, RakClientInterface *pRakClient)
 			return;
 
 	for(float value : parsed.vecPos)
-		if(!std::isfinite(value)) return;
+		if(!raksamp::numeric::IsFinite(value)) return;
 	for(float value : parsed.fQuaternion)
-		if(!std::isfinite(value)) return;
+		if(!raksamp::numeric::IsFinite(value)) return;
 	for(float value : parsed.vecMoveSpeed)
-		if(!std::isfinite(value)) return;
+		if(!raksamp::numeric::IsFinite(value)) return;
 	for(float value : parsed.vecSurfOffsets)
-		if(!std::isfinite(value)) return;
+		if(!raksamp::numeric::IsFinite(value)) return;
 
 	// Commit the complete snapshot only after every compressed field validates.
 	if(settings.runMode == RUNMODE_FOLLOWPLAYER &&
@@ -372,11 +373,11 @@ void Packet_VehicleSync(Packet *p, RakClientInterface *pRakClient)
 	}
 
 	for(float value : parsed.vecPos)
-		if(!std::isfinite(value)) return;
+		if(!raksamp::numeric::IsFinite(value)) return;
 	for(float value : parsed.fQuaternion)
-		if(!std::isfinite(value)) return;
+		if(!raksamp::numeric::IsFinite(value)) return;
 	for(float value : parsed.vecMoveSpeed)
-		if(!std::isfinite(value)) return;
+		if(!raksamp::numeric::IsFinite(value)) return;
 
 	if(settings.runMode == RUNMODE_FOLLOWPLAYER &&
 		playerId == getPlayerIDFromPlayerName(settings.szFollowingPlayerName))

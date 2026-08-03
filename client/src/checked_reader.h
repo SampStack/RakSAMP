@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <string>
 
+#include "finite_value.h"
+
 namespace raksamp::protocol
 {
 template <typename Stream>
@@ -40,7 +42,7 @@ public:
 	bool Finite(float &value)
 	{
 		float parsed = 0.0f;
-		if(!stream_.Read(parsed) || !std::isfinite(parsed))
+		if(!stream_.Read(parsed) || !raksamp::numeric::IsFinite(parsed))
 			return false;
 		value = parsed;
 		return true;

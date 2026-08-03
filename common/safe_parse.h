@@ -10,6 +10,8 @@
 #include <string_view>
 #include <type_traits>
 
+#include "finite_value.h"
+
 namespace raksamp::parse
 {
 template <std::size_t Size>
@@ -73,7 +75,7 @@ inline bool FloatValue(
 	errno = 0;
 	const float parsed = std::strtof(value, &end);
 	if(errno != 0 || end == value || *end != '\0' ||
-		!std::isfinite(parsed) || parsed < minimum || parsed > maximum)
+		!raksamp::numeric::IsFinite(parsed) || parsed < minimum || parsed > maximum)
 		return false;
 	result = parsed;
 	return true;

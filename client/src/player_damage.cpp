@@ -1,5 +1,7 @@
 #include "player_damage.h"
 
+#include "finite_value.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -69,7 +71,7 @@ namespace raksamp::damage
 		bool hasIssuer,
 		float &damage)
 	{
-		if(!std::isfinite(reportedDamage) || reportedDamage <= 0.0f ||
+		if(!raksamp::numeric::IsFinite(reportedDamage) || reportedDamage <= 0.0f ||
 			!IsTakenDamageSource(weaponId, hasIssuer))
 			return false;
 
@@ -140,15 +142,15 @@ namespace raksamp::damage
 
 	bool IsFiniteScalar(float value)
 	{
-		return std::isfinite(value);
+		return raksamp::numeric::IsFinite(value);
 	}
 
 	bool IsFiniteVector(const float value[3])
 	{
 		return value != nullptr &&
-			std::isfinite(value[0]) &&
-			std::isfinite(value[1]) &&
-			std::isfinite(value[2]);
+			raksamp::numeric::IsFinite(value[0]) &&
+			raksamp::numeric::IsFinite(value[1]) &&
+			raksamp::numeric::IsFinite(value[2]);
 	}
 
 	float DistanceSquared(const float lhs[3], const float rhs[3])
@@ -164,7 +166,7 @@ namespace raksamp::damage
 		current.health = std::clamp(current.health, 0.0f, 100.0f);
 		current.armour = std::clamp(current.armour, 0.0f, 100.0f);
 
-		if(!std::isfinite(damage) || damage <= 0.0f)
+		if(!raksamp::numeric::IsFinite(damage) || damage <= 0.0f)
 			return current;
 
 		const float armourDamage = std::min(current.armour, damage);

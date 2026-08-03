@@ -229,7 +229,7 @@ bool ValidateLoadModeOptions(const LoadModeOptions &options, std::string &error)
 	else if(options.probeHealth < 0 || options.probeHealth > 255 ||
 		options.probeArmour < 0 || options.probeArmour > 255 ||
 		options.probeWeapon < 0 || options.probeWeapon > 255 ||
-		!std::isfinite(options.probeVelocityX))
+		!raksamp::numeric::IsFinite(options.probeVelocityX))
 		error = "load probe values must fit their protocol fields and be finite";
 	else if(options.indexOffset < 0 ||
 		options.indexOffset + options.clientCount > 100)

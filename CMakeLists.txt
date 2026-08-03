@@ -48,7 +48,7 @@ if(BUILD_TESTING)
     add_executable(player-damage-tests
         tests/player_damage_tests.cpp
         client/src/player_damage.cpp)
-    target_include_directories(player-damage-tests PRIVATE client/src)
+    target_include_directories(player-damage-tests PRIVATE client/src common)
     add_test(NAME player-damage COMMAND player-damage-tests)
 
     add_executable(weapon-inventory-tests
@@ -61,7 +61,7 @@ if(BUILD_TESTING)
     add_test(NAME safe-parse COMMAND safe-parse-tests)
 
     add_executable(checked-reader-tests tests/checked_reader_tests.cpp)
-    target_include_directories(checked-reader-tests PRIVATE client/src)
+    target_include_directories(checked-reader-tests PRIVATE client/src common)
     add_test(NAME checked-reader COMMAND checked-reader-tests)
 
     add_executable(automation-protocol-tests

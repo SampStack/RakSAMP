@@ -1,5 +1,6 @@
 #include "load_mode.h"
 
+#include "finite_value.h"
 #include "main.h"
 
 #include "StringCompressor.h"
@@ -97,7 +98,7 @@ bool IsFinite(float value)
 #ifdef _WIN32
 	return _finite(value) != 0;
 #else
-	return std::isfinite(value);
+	return raksamp::numeric::IsFinite(value);
 #endif
 }
 
