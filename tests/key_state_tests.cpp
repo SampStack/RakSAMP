@@ -1,9 +1,13 @@
-#include "native_compat.h"
-#include "common.h"
-#include "key_state.h"
-
 #include <cassert>
 #include <string>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include "native_compat.h"
+#endif
+#include "common.h"
+#include "key_state.h"
 
 int main()
 {
