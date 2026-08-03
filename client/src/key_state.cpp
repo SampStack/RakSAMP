@@ -1,3 +1,10 @@
+#include <algorithm>
+#include <cerrno>
+#include <cctype>
+#include <cstdlib>
+#include <sstream>
+#include <unordered_map>
+
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -5,13 +12,6 @@
 #endif
 #include "../../common/common.h"
 #include "key_state.h"
-
-#include <algorithm>
-#include <cerrno>
-#include <cctype>
-#include <cstdlib>
-#include <sstream>
-#include <unordered_map>
 
 namespace
 {
