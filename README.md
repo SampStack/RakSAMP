@@ -160,7 +160,7 @@ Normal input is sent as chat; input beginning with `/` is sent as a server comma
 
 `!exit`, `!quit`, `!reconnect`, `!reload`, `!runmode`, `!players`, `!npcs`,
 `!goto`, `!gotocp`, `!autogotocp`, `!spawn`, `!class`, `!pickup`, `!weapon`,
-`!shoot`, `!shootmiss`, `!damage`, `!takedamage`, `!pos`, `!follow`, `!selplayer`, `!selveh`, `!vlist`, `!dialogresponse`,
+`!shoot`, `!shootmiss`, `!damage`, `!takedamage`, `!key`, `!pos`, `!follow`, `!selplayer`, `!selveh`, `!vlist`, `!dialogresponse`,
 `!menusel`, `!seltd`, `!sendrates`, `!log`, `!logstatus`, `!teleport`,
 `!change_name`, `!change_server`, `!imitate`, and `!scmevent`.
 
@@ -173,6 +173,15 @@ to the client, covering melee and deliberate damage-before-shot ordering tests.
 damage received by the headless client. The last command is explicit because
 RakSAMP has no GTA physics engine to independently simulate explosions,
 collisions, drowning, or falls; the server must still validate every report.
+
+`!key <down|up> <action|mask> [action|mask ...]` holds or releases one or more
+server-visible SA-MP controls and immediately emits the appropriate on-foot,
+driver, or passenger sync. Named actions cover `action`, `crouch`/`horn`/`h`,
+`fire`, `sprint`, `secondary_attack`, `jump`, `look_left`, `look_right`,
+`handbrake`, `submission`/`look_behind`, `walk`/`lalt`, the four analog
+directions, `yes`/`y`, `no`/`n`, and `ctrl_back`. Decimal and hexadecimal masks
+are also accepted. These are protocol actions rather than operating-system
+scancodes; Yes, No, and CtrlBack are mutually exclusive on the wire.
 
 </details>
 

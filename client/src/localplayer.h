@@ -2,8 +2,10 @@
 	Updated to 0.3.7 by P3ti
 */
 
-void SendOnFootFullSyncData(ONFOOT_SYNC_DATA *pofSync, int sendDeathNoti, PLAYERID followPlayerID);
-void SendInCarFullSyncData(INCAR_SYNC_DATA *picSync, int iUseCarPos, PLAYERID followPlayerID);
+void SendOnFootFullSyncData(ONFOOT_SYNC_DATA *pofSync, int sendDeathNoti,
+	PLAYERID followPlayerID, bool force = false);
+void SendInCarFullSyncData(INCAR_SYNC_DATA *picSync, int iUseCarPos,
+	PLAYERID followPlayerID, bool force = false);
 void SendPassengerFullSyncData(VEHICLEID vehicleID, bool force = false);
 void SendAimSyncData(DWORD dwAmmoInClip, int iReloading, PLAYERID copyFromPlayer);
 void SendUnoccupiedSyncData(UNOCCUPIED_SYNC_DATA *punocSync);

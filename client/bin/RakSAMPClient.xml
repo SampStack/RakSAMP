@@ -69,6 +69,7 @@ Avalable runmodes:
 		!shootmiss: send one non-damaging bullet miss callback.
 		!damage: send one melee damage report to a streamed player.
 		!takedamage: emulate one local special/environment damage callback.
+		!key: hold or release server-visible protocol controls.
 		!weapon: sets the current weapon in the fake player's hand.
 		!selplayer: sets the followed player's name.
 		!selveh: sets the fake player's vehicle.

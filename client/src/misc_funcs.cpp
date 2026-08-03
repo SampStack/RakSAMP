@@ -3,6 +3,7 @@
 */
 
 #include "main.h"
+#include "key_state.h"
 
 extern PLAYER_SPAWN_INFO SpawnInfo;
 extern int iDrunkLevel, iMoney, iLocalPlayerSkin;
@@ -28,7 +29,7 @@ bool bHealthPulseDirection = false;
 bool bArmourPulseDirection = true;
 
 // following functions
-void onFootUpdateAtNormalPos()
+void onFootUpdateAtNormalPos(bool force)
 {
 	ONFOOT_SYNC_DATA ofSync;
 	memset(&ofSync, 0, sizeof(ONFOOT_SYNC_DATA));
@@ -39,8 +40,9 @@ void onFootUpdateAtNormalPos()
 	ofSync.vecPos[0] = settings.fNormalModePos[0];
 	ofSync.vecPos[1] = settings.fNormalModePos[1];
 	ofSync.vecPos[2] = settings.fNormalModePos[2];
+	ApplyAutomationKeyState(ofSync, GetAutomationKeyState());
 
-	SendOnFootFullSyncData(&ofSync, 0, -1);
+	SendOnFootFullSyncData(&ofSync, 0, -1, force);
 
 	AIM_SYNC_DATA aimSync;
 	memset(&aimSync, 0, sizeof(AIM_SYNC_DATA));
@@ -137,6 +139,7 @@ void sampDisconnect(int iTimeout)
 {
 	if(pRakClient == NULL) return;
 
+	ResetAutomationKeyState();
 	Log("Disconnected.");
 
 	if(iTimeout)

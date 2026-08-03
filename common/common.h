@@ -9,7 +9,7 @@
 #include "SAMP_VER.h"
 #include "protocol.h"
 
-#define RAKSAMP_VERSION "0.10.0"
+#define RAKSAMP_VERSION "0.10.1"
 
 #define NETCODE_CONNCOOKIELULZ 0x6969
 #define NETGAME_VERSION_037 4057

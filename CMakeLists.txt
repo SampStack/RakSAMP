@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(RakSAMP
-    VERSION 0.10.0
+    VERSION 0.10.1
     DESCRIPTION "Cross-platform SA-MP 0.3.7 and 0.3DL fake client and development server"
     LANGUAGES C CXX)
 
@@ -71,6 +71,12 @@ if(BUILD_TESTING)
     target_compile_definitions(automation-protocol-tests PRIVATE
         RAKSAMP_CLIENT POSIX_HEADLESS)
     add_test(NAME automation-protocol COMMAND automation-protocol-tests)
+
+    add_executable(key-state-tests
+        tests/key_state_tests.cpp
+        client/src/key_state.cpp)
+    target_include_directories(key-state-tests PRIVATE client/src common raknet/SAMP)
+    add_test(NAME key-state COMMAND key-state-tests)
 
     add_executable(tinyxml-extension-tests
         tests/tinyxml_extension_tests.cpp
@@ -161,6 +167,7 @@ if(RAKSAMP_BUILD_CLIENT)
     add_executable(raksamp-client
 		client/src/automation_protocol.cpp
         client/src/cmds.cpp
+		client/src/key_state.cpp
         client/src/localplayer.cpp
         client/src/load_mode.cpp
         client/src/load_mode_options.cpp

@@ -1,5 +1,6 @@
 #include "main.h"
 #include "automation_protocol.h"
+#include "key_state.h"
 #include <mutex>
 #include <queue>
 #include <string>
@@ -16,6 +17,44 @@ static std::queue<std::string> commands;
 static int forcedVehicleId = -1;
 static bool forcedPassenger = false;
 static eRunModes forcedPreviousRunMode = RUNMODE_NORMAL;
+static AutomationKeyState automationKeyState;
+
+const AutomationKeyState &GetAutomationKeyState()
+{
+	return automationKeyState;
+}
+
+void ResetAutomationKeyState()
+{
+	automationKeyState = {};
+}
+
+static void SendAssignedDriverSync(bool force)
+{
+	INCAR_SYNC_DATA sync;
+	memset(&sync, 0, sizeof(sync));
+	sync.VehicleID = (VEHICLEID)forcedVehicleId;
+	sync.fQuaternion[0] = 1.0f;
+	sync.fCarHealth = 1000.0f;
+	sync.bytePlayerHealth = (BYTE)settings.fPlayerHealth;
+	sync.bytePlayerArmour = (BYTE)settings.fPlayerArmour;
+	ApplyAutomationKeyState(sync, automationKeyState);
+	SendInCarFullSyncData(&sync, 1, (PLAYERID)-1, force);
+}
+
+static void SendCurrentKeyState()
+{
+	if(forcedVehicleId >= 0 && forcedVehicleId < MAX_VEHICLES &&
+		vehiclePool[forcedVehicleId].iDoesExist)
+	{
+		if(forcedPassenger)
+			SendPassengerFullSyncData((VEHICLEID)forcedVehicleId, true);
+		else
+			SendAssignedDriverSync(true);
+		return;
+	}
+	onFootUpdateAtNormalPos(true);
+}
 
 static bool AssignVehicle(VEHICLEID vehicleId, BYTE seatId)
 {
@@ -81,16 +120,7 @@ void NativePumpCommands()
 			SendPassengerFullSyncData((VEHICLEID)forcedVehicleId);
 		}
 		else
-		{
-			INCAR_SYNC_DATA sync;
-			memset(&sync, 0, sizeof(sync));
-			sync.VehicleID = (VEHICLEID)forcedVehicleId;
-			sync.fQuaternion[0] = 1.0f;
-			sync.fCarHealth = 1000.0f;
-			sync.bytePlayerHealth = (BYTE)settings.fPlayerHealth;
-			sync.bytePlayerArmour = (BYTE)settings.fPlayerArmour;
-			SendInCarFullSyncData(&sync, 1, (PLAYERID)-1);
-		}
+			SendAssignedDriverSync(false);
 	}
 
 	std::string command;
@@ -146,6 +176,25 @@ void NativePumpCommands()
 		}
 		strncpy(buffer, automation.line.c_str(), sizeof(buffer) - 1);
 		buffer[sizeof(buffer) - 1] = '\0';
+	}
+
+	std::string keyError;
+	const KeyCommandResult keyResult = ApplyKeyCommand(
+		buffer,
+		automationKeyState,
+		keyError);
+	if(keyResult == KeyCommandResult::Error)
+	{
+		Log("[KEY] %s", keyError.c_str());
+		return;
+	}
+	if(keyResult == KeyCommandResult::Applied)
+	{
+		SendCurrentKeyState();
+		Log("[KEY] Keys=0x%04X Additional=%u.",
+			automationKeyState.keys,
+			automationKeyState.additionalKey);
+		return;
 	}
 
 	if(!strncmp(buffer, "!entervehicle ", 14))

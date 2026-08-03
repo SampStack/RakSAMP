@@ -2,7 +2,7 @@
 	Updated to 0.3.7 by P3ti
 */
 
-void onFootUpdateAtNormalPos();
+void onFootUpdateAtNormalPos(bool force = false);
 void onFootUpdateFollow(PLAYERID followID);
 void inCarUpdateFollow(PLAYERID followID, VEHICLEID withVehicleID);
 void spectatorUpdate();

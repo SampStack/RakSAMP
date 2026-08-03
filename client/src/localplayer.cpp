@@ -5,20 +5,23 @@
 #include "main.h"
 #include "player_damage.h"
 #include "weapon_inventory.h"
+#include "key_state.h"
 
 #include <algorithm>
 #include <cmath>
 
 DWORD dwLastOnFootDataSentTick = GetTickCount();
 int iFollowingPassenger = 0, iFollowingDriver = 0;
-void SendOnFootFullSyncData(ONFOOT_SYNC_DATA *pofSync, int sendDeathNoti, PLAYERID followPlayerID)
+void SendOnFootFullSyncData(ONFOOT_SYNC_DATA *pofSync, int sendDeathNoti,
+	PLAYERID followPlayerID, bool force)
 {
 	if(pofSync == NULL)
 		return;
 
 	RakNet::BitStream bsPlayerSync;
 
-	if(dwLastOnFootDataSentTick && dwLastOnFootDataSentTick < (GetTickCount() - iNetModeNormalOnfootSendRate))
+	if(force || (dwLastOnFootDataSentTick &&
+		dwLastOnFootDataSentTick < (GetTickCount() - iNetModeNormalOnfootSendRate)))
 	{
 		if(followPlayerID != (PLAYERID)-1)
 		{
@@ -61,6 +64,7 @@ void SendOnFootFullSyncData(ONFOOT_SYNC_DATA *pofSync, int sendDeathNoti, PLAYER
 			settings.fCurrentPosition[1] = pofSync->vecPos[1];
 			settings.fCurrentPosition[2] = pofSync->vecPos[2];
 
+			ApplyAutomationKeyState(*pofSync, GetAutomationKeyState());
 			bsPlayerSync.Write((BYTE)ID_PLAYER_SYNC);
 			bsPlayerSync.Write((PCHAR)pofSync, sizeof(ONFOOT_SYNC_DATA));
 			pRakClient->Send(&bsPlayerSync, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 0);
@@ -79,6 +83,7 @@ void SendOnFootFullSyncData(ONFOOT_SYNC_DATA *pofSync, int sendDeathNoti, PLAYER
 			settings.fCurrentPosition[1] = pofSync->vecPos[1];
 			settings.fCurrentPosition[2] = pofSync->vecPos[2];
 
+			ApplyAutomationKeyState(*pofSync, GetAutomationKeyState());
 			bsPlayerSync.Write((BYTE)ID_PLAYER_SYNC);
 			bsPlayerSync.Write((PCHAR)pofSync, sizeof(ONFOOT_SYNC_DATA));
 
@@ -93,14 +98,16 @@ void SendOnFootFullSyncData(ONFOOT_SYNC_DATA *pofSync, int sendDeathNoti, PLAYER
 }
 
 DWORD dwLastInVehicleDataSentTick = GetTickCount();
-void SendInCarFullSyncData(INCAR_SYNC_DATA *picSync, int iUseCarPos, PLAYERID followPlayerID)
+void SendInCarFullSyncData(INCAR_SYNC_DATA *picSync, int iUseCarPos,
+	PLAYERID followPlayerID, bool force)
 {
 	if(picSync == NULL)
 		return;
 
 	RakNet::BitStream bsVehicleSync;
 
-	if(dwLastInVehicleDataSentTick && dwLastInVehicleDataSentTick < (GetTickCount() - iNetModeNormalIncarSendRate))
+	if(force || (dwLastInVehicleDataSentTick &&
+		dwLastInVehicleDataSentTick < (GetTickCount() - iNetModeNormalIncarSendRate)))
 	{
 		if(followPlayerID != (PLAYERID)-1)
 		{
@@ -147,6 +154,7 @@ void SendInCarFullSyncData(INCAR_SYNC_DATA *picSync, int iUseCarPos, PLAYERID fo
 			settings.fCurrentPosition[1] = picSync->vecPos[1];
 			settings.fCurrentPosition[2] = picSync->vecPos[2];
 
+			ApplyAutomationKeyState(*picSync, GetAutomationKeyState());
 			bsVehicleSync.Write((BYTE)ID_VEHICLE_SYNC);
 			bsVehicleSync.Write((PCHAR)picSync,sizeof(INCAR_SYNC_DATA));
 			pRakClient->Send(&bsVehicleSync, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 0);
@@ -171,6 +179,7 @@ void SendInCarFullSyncData(INCAR_SYNC_DATA *picSync, int iUseCarPos, PLAYERID fo
 			settings.fCurrentPosition[1] = picSync->vecPos[1];
 			settings.fCurrentPosition[2] = picSync->vecPos[2];
 
+			ApplyAutomationKeyState(*picSync, GetAutomationKeyState());
 			bsVehicleSync.Write((BYTE)ID_VEHICLE_SYNC);
 			bsVehicleSync.Write((PCHAR)picSync,sizeof(INCAR_SYNC_DATA));
 			pRakClient->Send(&bsVehicleSync,HIGH_PRIORITY,UNRELIABLE_SEQUENCED,0);
@@ -203,6 +212,7 @@ void SendPassengerFullSyncData(VEHICLEID vehicleID, bool force)
 
 		psSync.bytePlayerHealth = (BYTE)settings.fPlayerHealth;
 		psSync.bytePlayerArmour = (BYTE)settings.fPlayerArmour;
+		ApplyAutomationKeyState(psSync, GetAutomationKeyState());
 
 		bsPassengerSync.Write((BYTE)ID_PASSENGER_SYNC);
 		bsPassengerSync.Write((PCHAR)&psSync, sizeof(PASSENGER_SYNC_DATA));

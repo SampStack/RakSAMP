@@ -5,52 +5,34 @@
 
 ## Active slice
 
-- Status: local and consumer validation complete; second Windows portability follow-up ready
-- Outcome: release protocol-generic RakSAMP 0.10.0, prove it against both supported protocols in the
-  consuming roleplay gamemode, then publish native/container artifacts
-- Next action: push the centralized finite-number compatibility helper and rerun the build-only workflow
-- Scope: client state convergence, checked protocol/config parsing, generic automation and load probes,
-  development-server formatting safety, sanitizer coverage, documentation, and release gates
-- Do not touch: gamemode-specific behavior in RakSAMP or immutable publication before consumer proof
+- Status: generic key-state automation implemented and locally validated; ready to commit and push
+- Outcome: publish RakSAMP 0.10.1 with protocol-correct automation for every server-visible key action,
+  then prove and pin it in the Roleplay ATM workflow
+- Next action: commit and push `master`, then run the five-target build-only workflow before local
+  Roleplay consumer validation
+- Scope: `!key down|up`, on-foot/driver/passenger packing, aliases/raw masks, tests, docs, and 0.10.1 release
+- Do not add: gamemode-specific commands, arbitrary OS scancodes, immutable publication before consumer proof
 
-## State
+## Decisions
 
-- Branch: `codex/reset-weapon-inventory-sync` from current `origin/master`
-- Reproduction: after `/gun`, hospital recovery clears the authoritative loadout, but RakSAMP's empty
-  `ID_WEAPONS_UPDATE` omits all slots and open.mp retains the prior weapon in `GetPlayerWeaponData`
-- Decision: normal inventory updates remain sparse; reset updates explicitly serialize all 13 slots as zero
-- Consumer evidence: roleplay 0.3DL reports `WeaponManipulation` about two seconds after discharge;
-  command ordering is valid and the retained slot is the pre-recovery server-granted weapon
-- Release decision: user selected immutable 0.10.0 and explicitly authorized direct push to `master`
-- Hardening: checked readers now reject truncated/non-finite key RPC and sync fields; configuration parsing
-  uses bounded values and atomic settings/rate commit; structured JSONL automation is opt-in and versioned
-- Customization: load probes expose independent protocol fields with generic names; old anti-cheat/password
-  option spellings remain compatibility aliases
-- Safety: reachable unbounded formatting was replaced, TinyXML byte-color parsing was corrected, and
-  invalid post-release RakNet page writes were removed
+- Ordinary actions use the 16-bit sync mask; Yes, No, and CtrlBack use the protocol's two-bit
+  additional-key field packed with the six-bit weapon id
+- Held state is shared across on-foot, driver, and passenger sync and reset on disconnect
+- Key commands force an immediate sync while normal periodic sync preserves held state
+- Named controls and raw decimal/hex masks are supported; mutually exclusive additional keys are rejected
+- The user explicitly authorized committing and pushing this completed slice directly to `master` and
+  publishing immutable 0.10.1 after the Roleplay consumer gate
 
 ## Verification
 
-- Passed before this slice: immutable `0.9.5` five-target release and prior consumer acceptance
-- Passed: final 0.10.0 Debug client/server build, all 10 native tests, both sample configuration checks
-- Passed: AddressSanitizer + UndefinedBehaviorSanitizer build, all 10 tests, and both config checks
-- Passed: consuming roleplay hospital weapon-clear scenario on 0.3.7 and 0.3DL with anti-cheat enabled;
-  each held a four-second negative window with no `WeaponManipulation` correction
-- Remote: sanitizer, Linux x64/ARM64, and macOS x64/ARM64 passed on run `30826175161`; Windows exposed
-  the standard `max` macro collision in `safe_parse.h`, now fixed and covered by a macro-injection test
-- Remote: run `30826422326` then exposed the Windows `isfinite` macro and `min` clamp collision; all
-  maintained finite checks now use `finite_value.h`, and numeric limit calls are macro-safe
-- Passed with diagnostic fixture relaxations only: corrected local client completed the 0.3DL hospital recovery
-  without a weapon correction; the fixture relaxations were reverted immediately
-- Observed on 0.3.7 before a fixture-only assertion failed: discharge emitted no weapon correction during
-  the four-second observation window; a clean final consumer rerun remains pending
-- Failed then fixed: first client build exposed the C-array-to-`std::array` reset conversion;
-  reset now uses `fill`, and the focused serializer test had already built successfully
-- Not run: clean remote Windows rerun, containers, immutable release verification
+- Passed: Release client/server build, all 11 native tests, and both sample configuration checks
+- Passed: AddressSanitizer/UndefinedBehaviorSanitizer build and all 11 tests
+- Passed: focused `key-state` test with named actions, aliases, raw masks, invalid combinations, and exact
+  on-foot/driver/passenger additional-key packing, including legacy follow-state preservation
+- Pending: remote five-target build-only workflow, Roleplay 0.3.7/0.3DL consumer proof, immutable release,
+  and remote-artifact revalidation
 
-## Resume
+## State
 
-- Files: completed uncommitted 0.10.0 hardening slice across client/server/common/tests/docs/workflows
-- Commands: local sanitized build is `build-sanitized`; normal build is `build`
-- Risks: legacy RakNet remains permissive internally; supported entry points are now checked and sanitizer
-  gated, but the remote OS/architecture matrix and real consuming server remain the release authorities
+- Repository started clean on `master` aligned with `origin/master` at `a986602` / immutable 0.10.0
+- Roleplay remains clean on `main`; its implementation has not started
