@@ -5,12 +5,16 @@
 
 ## Active slice
 
-- Status: generic key-state automation is published as immutable 0.10.1 and proven by Roleplay ATM flows
-- Outcome: publish RakSAMP 0.10.1 with protocol-correct automation for every server-visible key action,
-  then prove and pin it in the Roleplay ATM workflow
-- Next action: none in RakSAMP; Roleplay is pinning the immutable release and completing stack acceptance
-- Scope: `!key down|up`, on-foot/driver/passenger packing, aliases/raw masks, tests, docs, and 0.10.1 release
-- Do not add: gamemode-specific commands or arbitrary OS scancodes
+- Status: generic bounded driver-position automation for 0.11.0 is implemented and has passed native,
+  sanitizer, configuration, and two-protocol Roleplay consumer gates; commit/PR/release remain
+- Outcome: publish RakSAMP 0.11.0 with instant `!driveposition` abuse probes plus bounded smooth
+  `!driveto`, `!drivestatus`, and `!drivecancel` automation so consumers can distinguish gradual
+  route evidence from instant checkpoint teleporting
+- Next action: commit, push, open and merge the RakSAMP PR, run the five-platform build-only workflow,
+  publish immutable 0.11.0, verify artifacts, and update the Roleplay dependency pin
+- Scope: generic finite/bounded driver position parsing, 100–60,000 ms interpolation, motion status
+  and cancellation, assigned-driver enforcement, tests, docs, and the explicit 0.11.0 release
+- Do not add: gamemode names, objectives, routes, fixture coordinates, or server-side bypasses
 
 ## Decisions
 
@@ -21,9 +25,16 @@
 - Named controls and raw decimal/hex masks are supported; mutually exclusive additional keys are rejected
 - The user explicitly authorized committing and pushing this completed slice directly to `master` and
   publishing immutable 0.10.1 after the Roleplay consumer gate
+- The user explicitly requested immutable 0.11.0 after the new motion primitive passes the Roleplay
+  consumer gate; no other version should be published
 
 ## Verification
 
+- Passed 0.11.0: Release build and all 12 native tests; focused `drive-position` parser/interpolation
+  coverage; both sample configuration checks; sanitizer build and all 12 tests
+- Passed 0.11.0 consumer gate: Roleplay gradual two-player Forklift completion and exact payouts on 0.3.7
+  and 0.3DL; instant checkpoint teleport rejection with unchanged balances on both protocols; rapid
+  exit/re-entry retained one session; passenger competition did not acquire the leased job vehicle
 - Passed: Release client/server build, all 11 native tests, and both sample configuration checks
 - Passed: AddressSanitizer/UndefinedBehaviorSanitizer build and all 11 tests
 - Passed: focused `key-state` test with named actions, aliases, raw masks, invalid combinations, and exact
@@ -37,5 +48,5 @@
 
 ## State
 
-- Feature and portability fixes are pushed through `32f592a`; immutable 0.10.1 is published
-- Roleplay implementation is complete and its dependency pin/full acceptance are in progress
+- The 0.11.0 change is uncommitted on `codex/driver-position-probe`; immutable 0.10.1 remains published
+- Roleplay hardening changes remain local until the required immutable 0.11.0 pin is available

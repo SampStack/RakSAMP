@@ -1,6 +1,8 @@
 #include "main.h"
 #include "automation_protocol.h"
+#include "drive_position.h"
 #include "key_state.h"
+#include <chrono>
 #include <mutex>
 #include <queue>
 #include <string>
@@ -18,6 +20,13 @@ static int forcedVehicleId = -1;
 static bool forcedPassenger = false;
 static eRunModes forcedPreviousRunMode = RUNMODE_NORMAL;
 static AutomationKeyState automationKeyState;
+static DriveMotion driveMotion;
+
+static uint64_t MonotonicMilliseconds()
+{
+	return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+		std::chrono::steady_clock::now().time_since_epoch()).count());
+}
 
 const AutomationKeyState &GetAutomationKeyState()
 {
@@ -27,6 +36,7 @@ const AutomationKeyState &GetAutomationKeyState()
 void ResetAutomationKeyState()
 {
 	automationKeyState = {};
+	driveMotion.Cancel();
 }
 
 static void SendAssignedDriverSync(bool force)
@@ -40,6 +50,50 @@ static void SendAssignedDriverSync(bool force)
 	sync.bytePlayerArmour = (BYTE)settings.fPlayerArmour;
 	ApplyAutomationKeyState(sync, automationKeyState);
 	SendInCarFullSyncData(&sync, 1, (PLAYERID)-1, force);
+}
+
+static bool HasAssignedDriverVehicle()
+{
+	return forcedVehicleId >= 0 && forcedVehicleId < MAX_VEHICLES &&
+		vehiclePool[forcedVehicleId].iDoesExist && !forcedPassenger;
+}
+
+static void ApplyDriverPosition(const DriveVector &position, bool force)
+{
+	settings.fNormalModePos[0] = position.x;
+	settings.fNormalModePos[1] = position.y;
+	settings.fNormalModePos[2] = position.z;
+	settings.fCurrentPosition[0] = position.x;
+	settings.fCurrentPosition[1] = position.y;
+	settings.fCurrentPosition[2] = position.z;
+	vehiclePool[forcedVehicleId].fPos[0] = position.x;
+	vehiclePool[forcedVehicleId].fPos[1] = position.y;
+	vehiclePool[forcedVehicleId].fPos[2] = position.z;
+	SendAssignedDriverSync(force);
+}
+
+static void PumpDriveMotion()
+{
+	if(!driveMotion.IsActive())
+		return;
+	if(!HasAssignedDriverVehicle())
+	{
+		driveMotion.Cancel();
+		Log("[DRIVE_TO] Cancelled because the assigned driver vehicle is unavailable.");
+		return;
+	}
+
+	const DriveMotionSample sample =
+		driveMotion.Sample(MonotonicMilliseconds());
+	ApplyDriverPosition(sample.position, sample.completed);
+	if(sample.completed)
+	{
+		Log("[DRIVE_TO] Vehicle %d reached %.2f %.2f %.2f.",
+			forcedVehicleId,
+			sample.position.x,
+			sample.position.y,
+			sample.position.z);
+	}
 }
 
 static void SendCurrentKeyState()
@@ -61,6 +115,7 @@ static bool AssignVehicle(VEHICLEID vehicleId, BYTE seatId)
 	if(vehicleId >= MAX_VEHICLES)
 		return false;
 
+	driveMotion.Cancel();
 	playerInfo[g_myPlayerID].iAreWeInAVehicle = 1;
 	if(forcedVehicleId < 0)
 		forcedPreviousRunMode = settings.runMode;
@@ -86,6 +141,7 @@ void NativePutPlayerInVehicle(VEHICLEID vehicleId, BYTE seatId)
 
 static int ClearAssignedVehicle()
 {
+	driveMotion.Cancel();
 	playerInfo[g_myPlayerID].iAreWeInAVehicle = 0;
 	int exitedVehicleId = forcedVehicleId;
 	forcedVehicleId = -1;
@@ -112,6 +168,7 @@ static void *ReadCommands(void *)
 
 void NativePumpCommands()
 {
+	PumpDriveMotion();
 	if(forcedVehicleId >= 0 && forcedVehicleId < MAX_VEHICLES &&
 		vehiclePool[forcedVehicleId].iDoesExist)
 	{
@@ -145,6 +202,7 @@ void NativePumpCommands()
 			Log("[GOTOCP] There is no active checkpoint.");
 			return;
 		}
+		driveMotion.Cancel();
 		settings.fNormalModePos[0] = settings.CurrentCheckpoint.fPosition[0];
 		settings.fNormalModePos[1] = settings.CurrentCheckpoint.fPosition[1];
 		settings.fNormalModePos[2] = settings.CurrentCheckpoint.fPosition[2];
@@ -194,6 +252,89 @@ void NativePumpCommands()
 		Log("[KEY] Keys=0x%04X Additional=%u.",
 			automationKeyState.keys,
 			automationKeyState.additionalKey);
+		return;
+	}
+
+	DriveCommand driveCommand;
+	std::string driveError;
+	const DriveCommandResult driveResult =
+		ParseDriveCommand(
+			buffer,
+			driveCommand,
+			driveError);
+	if(driveResult == DriveCommandResult::Error)
+	{
+		Log("[DRIVE] %s", driveError.c_str());
+		return;
+	}
+	if(driveResult == DriveCommandResult::Parsed)
+	{
+		if(driveCommand.kind == DriveCommandKind::Cancel)
+		{
+			const bool wasActive = driveMotion.IsActive();
+			driveMotion.Cancel();
+			Log("[DRIVE_CANCEL] %s.",
+				wasActive ? "Active motion cancelled" : "No active motion");
+			return;
+		}
+		if(driveCommand.kind == DriveCommandKind::Status)
+		{
+			if(!driveMotion.IsActive())
+				Log("[DRIVE_STATUS] No active motion.");
+			else
+			{
+				const DriveVector &target = driveMotion.Target();
+				const uint64_t now = MonotonicMilliseconds();
+				const uint64_t remaining = driveMotion.FinishesAtMilliseconds() > now
+					? driveMotion.FinishesAtMilliseconds() - now
+					: 0;
+				Log("[DRIVE_STATUS] Target %.2f %.2f %.2f, %llu ms remaining.",
+					target.x,
+					target.y,
+					target.z,
+					static_cast<unsigned long long>(remaining));
+			}
+			return;
+		}
+		if(!HasAssignedDriverVehicle())
+		{
+			Log("[DRIVE] An assigned driver vehicle is required.");
+			return;
+		}
+
+		if(driveCommand.kind == DriveCommandKind::Position)
+		{
+			driveMotion.Cancel();
+			ApplyDriverPosition(driveCommand.target, true);
+			Log("[DRIVE_POSITION] Vehicle %d moved to %.2f %.2f %.2f.",
+				forcedVehicleId,
+				driveCommand.target.x,
+				driveCommand.target.y,
+				driveCommand.target.z);
+			return;
+		}
+
+		const DriveVector start = {
+			vehiclePool[forcedVehicleId].fPos[0],
+			vehiclePool[forcedVehicleId].fPos[1],
+			vehiclePool[forcedVehicleId].fPos[2]
+		};
+		if(!driveMotion.Start(
+				start,
+				driveCommand.target,
+				driveCommand.durationMilliseconds,
+				MonotonicMilliseconds(),
+				driveError))
+		{
+			Log("[DRIVE] %s", driveError.c_str());
+			return;
+		}
+		Log("[DRIVE_TO] Vehicle %d moving to %.2f %.2f %.2f over %u ms.",
+			forcedVehicleId,
+			driveCommand.target.x,
+			driveCommand.target.y,
+			driveCommand.target.z,
+			driveCommand.durationMilliseconds);
 		return;
 	}
 
